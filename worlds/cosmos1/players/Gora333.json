@@ -1,0 +1,54 @@
+{
+  "username": "Gora333",
+  "position": {
+    "x": 21,
+    "y": 39.5,
+    "z": 18
+  },
+  "inventory": {
+    "metal": 100,
+    "fuel": 50,
+    "glass": 20
+  },
+  "ship": {
+    "blocks": [
+      {
+        "type": "metal",
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "type": "metal",
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "type": "metal",
+        "x": -1,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "type": "glass",
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "type": "engine",
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      {
+        "type": "engine",
+        "x": 0,
+        "y": 0,
+        "z": -1
+      }
+    ]
+  },
+  "lastSeen": 1771692408015
+}

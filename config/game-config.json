@@ -1,0 +1,73 @@
+{
+    "star": {
+        "radius": 50,
+        "temperature": 5778,
+        "radiation": 1000,
+        "zones": {
+            "dangerous": 200,
+            "hot": 400,
+            "warm": 800,
+            "cold": 1500
+        }
+    },
+    "asteroids": {
+        "spawnRate": 0.1,
+        "maxPerChunk": 50,
+        "types": {
+            "metallic": {
+                "color": "#888888",
+                "resources": { "metal": 500 },
+                "scale": 20,
+                "hardness": 1.0,
+                "spawnWeight": 40
+            },
+            "silicon": {
+                "color": "#66aaff",
+                "resources": { "silicon": 400 },
+                "scale": 15,
+                "hardness": 1.2,
+                "spawnWeight": 30
+            },
+            "icy": {
+                "color": "#aaddff",
+                "resources": { "ice": 300 },
+                "scale": 12,
+                "hardness": 0.8,
+                "spawnWeight": 25
+            },
+            "rare": {
+                "color": "#ffaa44",
+                "resources": { "rare": 100, "metal": 200 },
+                "scale": 10,
+                "hardness": 1.5,
+                "spawnWeight": 5
+            }
+        }
+    },
+    "stations": {
+        "maxModules": 1000,
+        "buildDistance": 10,
+        "moduleCosts": {
+            "habitat": [
+                { "type": "metal", "amount": 100 },
+                { "type": "silicon", "amount": 50 }
+            ],
+            "production": [
+                { "type": "metal", "amount": 200 },
+                { "type": "silicon", "amount": 100 },
+                { "type": "rare", "amount": 20 }
+            ],
+            "storage": [
+                { "type": "metal", "amount": 50 }
+            ],
+            "solar": [
+                { "type": "metal", "amount": 50 },
+                { "type": "silicon", "amount": 150 }
+            ],
+            "turret": [
+                { "type": "metal", "amount": 150 },
+                { "type": "rare", "amount": 50 }
+            ]
+        }
+    }
+}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CosmoCraft - Космическая стратегия</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Меню логина -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1>CosmoCraft</h1>
+            <input type="text" id="player-name" placeholder="Введите имя игрока" value="Gora">
+            <button onclick="window.login()">Войти в игру</button>
+            <div id="login-status"></div>
+        </div>
+    </div>
+
+    <!-- Игровой интерфейс -->
+    <div id="game-ui" style="display: none;">
+        <div id="info">
+            <div id="coordinates">X: 0 Y: 0 Z: 0</div>
+            <div id="sector">Сектор: Неизвестно</div>
+            <div id="temperature">Температура: 0K</div>
+            <div id="radiation">Радиация: 0 rad/s</div>
+            <div id="resources">
+                <div>Металл: <span id="metal">0</span></div>
+                <div>Кремний: <span id="silicon">0</span></div>
+                <div>Лед: <span id="ice">0</span></div>
+                <div>Редкие: <span id="rare">0</span></div>
+            </div>
+        </div>
+        
+        <div id="warning" style="display: none;"></div>
+        
+        <div id="build-menu"></div>
+        
+        <div id="mining-progress" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="mining-fill"></div>
+            </div>
+            <div id="mining-status">Добыча...</div>
+        </div>
+    </div>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <script type="module">
+        import { CosmoCraftGame } from '/dist/client/main.js';
+        
+        // Создаем глобальную функцию login
+        window.login = function() {
+            console.log('Login function called');
+            const playerName = document.getElementById('player-name').value;
+            if (playerName) {
+                localStorage.setItem('playerName', playerName);
+                
+                // Скрываем меню логина
+                document.getElementById('login-overlay').style.display = 'none';
+                
+                // Показываем игровой интерфейс
+                document.getElementById('game-ui').style.display = 'block';
+                
+                // Создаем и запускаем игру
+                if (!window.game) {
+                    window.game = new CosmoCraftGame();
+                }
+                window.game.start();
+            }
+        };
+        
+        // Загружаем сохраненное имя
+        window.addEventListener('load', () => {
+            console.log('Page loaded');
+            const savedName = localStorage.getItem('playerName');
+            if (savedName) {
+                document.getElementById('player-name').value = savedName;
+            }
+        });
+    </script>
+</body>
+</html>

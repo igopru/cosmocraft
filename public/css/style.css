@@ -1,0 +1,207 @@
+
+#login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.login-box {
+    background: rgba(20, 20, 40, 0.95);
+    padding: 40px;
+    border-radius: 10px;
+    border: 2px solid #4466aa;
+    box-shadow: 0 0 30px rgba(68, 102, 170, 0.5);
+    text-align: center;
+    color: white;
+    width: 300px;
+}
+
+.login-box h1 {
+    color: #ffaa33;
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px rgba(255, 170, 51, 0.5);
+}
+
+.login-box input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #4466aa;
+    color: white;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.login-box button {
+    background: #4466aa;
+    color: white;
+    border: none;
+    padding: 10px 30px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.login-box button:hover {
+    background: #5577bb;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #4466aa;
+}
+
+#login-status {
+    margin-top: 15px;
+    color: #ff6666;
+    font-size: 14px;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+    color: white;
+    text-shadow: 1px 1px 2px black;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    z-index: 100;
+}
+
+#coordinates, #sector, #temperature, #radiation {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+#resources {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #444;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+}
+
+#resources div {
+    font-size: 12px;
+}
+
+#warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    z-index: 200;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+}
+
+#build-menu {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #444;
+    z-index: 100;
+}
+
+#build-menu button {
+    background: #333;
+    color: white;
+    border: 1px solid #666;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    white-space: pre-line;
+}
+
+#build-menu button:hover {
+    background: #444;
+    border-color: #888;
+    transform: translateY(-2px);
+}
+
+#build-menu button:active {
+    transform: translateY(0);
+}
+
+#mining-progress {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #444;
+    z-index: 100;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background: #333;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffaa00, #ff5500);
+    width: 0%;
+    transition: width 0.1s;
+}
+
+#mining-status {
+    text-align: center;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #aaa;
+}
+
+/* Стили для разных секторов */
+.sector-danger {
+    filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.5));
+}
+
+.sector-hot {
+    filter: drop-shadow(0 0 10px rgba(255, 100, 0, 0.3));
+}
+
+.sector-cold {
+    filter: drop-shadow(0 0 10px rgba(0, 100, 255, 0.3));
+}

@@ -1,0 +1,74 @@
+mysql> DROP DATABASE cosmocraft;
+Query OK, 0 rows affected (0,02 sec)
+
+mysql> CREATE DATABASE cosmocraft
+    -> DEFAULT CHARACTER SET utf8mb4
+    -> DEFAULT COLLATE utf8mb4_unicode_ci;
+Query OK, 1 row affected (0,02 sec)
+
+mysql> SHOW DATABASES;
++--------------------+
+| Database           |
++--------------------+
+| asterisk           |
+| asteriskcdrdb      |
+| cosmocraft         |
+| information_schema |
+| mysql              |
+| performance_schema |
+| phone              |
+| sys                |
++--------------------+
+8 rows in set (0,00 sec)
+
+mysql> SELECT User, Host FROM mysql.user;
++------------------+-----------+
+| User             | Host      |
++------------------+-----------+
+| grafana          | %         |
+| debian-sys-maint | localhost |
+| freepbxuser      | localhost |
+| mysql.infoschema | localhost |
+| mysql.session    | localhost |
+| mysql.sys        | localhost |
+| root             | localhost |
++------------------+-----------+
+7 rows in set (0,00 sec)
+
+mysql> CREATE USER 'prusakoviv'@'%' IDENTIFIED BY 'My_Password';
+Query OK, 0 rows affected (0,02 sec)
+
+mysql> GRANT ALL PRIVILEGES ON cosmocraft.* TO 'prusakoviv'@'%';
+Query OK, 0 rows affected (0,01 sec)
+
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0,01 sec)
+
+mysql> SHOW GRANTS FOR 'prusakoviv'@'%';
++------------------------------------------------------------+
+| Grants for prusakoviv@%                                    |
++------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `prusakoviv`@`%`                     |
+| GRANT ALL PRIVILEGES ON `cosmocraft`.* TO `prusakoviv`@`%` |
++------------------------------------------------------------+
+2 rows in set (0,01 sec)
+
+
+mysql -u prusakoviv -p -D cosmocraft
+Enter password: 
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| cosmocraft         |
+| information_schema |
+| performance_schema |
++--------------------+
+3 rows in set (0,00 sec)
+
+mysql> use cosmocraft 
+Database changed
+mysql> show tables;
+Empty set (0,00 sec)
+

@@ -1,0 +1,37 @@
+# Зависимости
+node_modules/
+package-lock.json
+
+# Сборка
+dist/
+public/dist/
+*.log
+
+# Окружение
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Базы данных и бэкапы
+*.sql
+*.sqlite
+*.db
+backups/
+worlds/*.json
+!worlds/cosmos1/README.md
+
+# IDE и системные файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Тестовые файлы
+*.bak
+*.old
+test-*.js

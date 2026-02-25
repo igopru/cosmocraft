@@ -1,0 +1,9 @@
+{
+  "ignore": ["worlds/*", "*.json"],
+  "watch": ["server.js", "lib/"],
+  "ext": "js",
+  "delay": 1000,
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

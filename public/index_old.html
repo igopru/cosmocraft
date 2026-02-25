@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>CosmoCraft - Воксельная вселенная</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body { 
+            overflow: hidden; 
+            font-family: 'Courier New', monospace; 
+            background: #0a0a20; 
+            color: #0f0; 
+        }
+        
+        canvas { 
+            display: block; 
+        }
+        
+        #login-form {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0,255,0,0.3);
+            z-index: 1000;
+            min-width: 300px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #login-form h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #0f0;
+            font-size: 28px;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        #login-form input {
+            width: 100%;
+            background: #1a1a30;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 16px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #login-form input:focus {
+            outline: none;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        #login-form button {
+            width: 48%;
+            background: #0a0a20;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 12px;
+            margin: 10px 1%;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        #login-form button:hover {
+            background: #1a1a40;
+            box-shadow: 0 0 15px #0f0;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: cyan;
+            font-size: 28px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border: 2px solid cyan;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0,255,255,0.3);
+            text-align: center;
+        }
+        
+        #loading-progress {
+            width: 300px;
+            height: 20px;
+            background: #333;
+            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #loading-bar {
+            width: 0%;
+            height: 100%;
+            background: cyan;
+            transition: width 0.3s;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            z-index: 100;
+            min-width: 250px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0,255,0,0.2);
+        }
+        
+        #ui h3 {
+            margin-bottom: 15px;
+            color: #0f0;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        #ui div {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        #ui span {
+            color: #ffaa00;
+            float: right;
+        }
+        
+        #connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #ffaa00;
+            color: #ffaa00;
+            z-index: 100;
+            border-radius: 5px;
+            backdrop-filter: blur(5px);
+            font-size: 14px;
+        }
+        
+        #chat {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            width: 400px;
+            height: 250px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 100;
+            font-size: 13px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #chat-messages {
+            height: 180px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #335;
+        }
+        
+        #chat-input-area {
+            display: flex;
+            gap: 5px;
+        }
+        
+        #chat-input {
+            flex: 1;
+            background: #1a1a30;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #chat-send {
+            background: #0a0a20;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        #chat-send:hover {
+            background: #1a1a40;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #888;
+            font-size: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        
+        #debug-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #888;
+            font-size: 11px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 3px;
+            z-index: 100;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .message-system { color: #0f0; }
+        .message-chat { color: #fff; }
+        .message-error { color: #f55; }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a30;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #0f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Форма входа -->
+    <div id="login-form">
+        <h2>🚀 CosmoCraft</h2>
+        <input type="text" id="username" placeholder="Имя пользователя" value="Gora" autocomplete="off">
+        <input type="password" id="password" placeholder="Пароль" value="123" autocomplete="off">
+        <div style="text-align: center;">
+            <button onclick="login()">Войти</button>
+            <button onclick="register()">Регистрация</button>
+        </div>
+    </div>
+
+    <!-- Загрузка -->
+    <div id="loading" class="hidden">
+        <div>⏳ ЗАГРУЗКА ВСЕЛЕННОЙ</div>
+        <div id="loading-progress">
+            <div id="loading-bar"></div>
+        </div>
+        <div id="loading-text">0%</div>
+    </div>
+    
+    <!-- Интерфейс -->
+    <div id="ui" class="hidden">
+        <h3>🚀 КОРАБЛЬ</h3>
+        <div>ПРОЧНОСТЬ: <span id="ship-health">100%</span></div>
+        <div>МЕТАЛЛ: <span id="resource-metal">100</span></div>
+        <div>ТОПЛИВО: <span id="resource-fuel">50</span></div>
+        <div>СТЕКЛО: <span id="resource-glass">20</span></div>
+        <div>ПОЗИЦИЯ: <span id="ship-pos">0,0,0</span></div>
+        <div>СТЫКОВОК: <span id="dock-count">0</span></div>
+    </div>
+    
+    <!-- Статус соединения -->
+    <div id="connection-status" class="hidden">
+        <span id="status-text">ОТКЛЮЧЕН</span><br>
+        <span id="ping-text">-- ms</span>
+    </div>
+    
+    <!-- Чат -->
+    <div id="chat" class="hidden">
+        <div id="chat-messages"></div>
+        <div id="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Введите сообщение...">
+            <button id="chat-send">📤</button>
+        </div>
+    </div>
+    
+    <!-- Подсказка -->
+    <div id="controls-hint" class="hidden">
+        🎮 W/S/A/D - движение | Q/E - вверх/вниз | Мышь (зажать) - поворот | T - чат
+    </div>
+    
+    <!-- Отладка -->
+    <div id="debug-info"></div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+        let socket;
+        let scene, camera, renderer;
+        let playerShip = null;
+        let stationGroup = null;
+        let players = {};
+        let playerId;
+        let username;
+        let password;
+        let worldInitialized = false;
+        let reconnectAttempts = 0;
+        let reconnectTimer = null;
+        let pingInterval = null;
+        let lastPingTime = 0;
+        
+        // Размер вокселя
+        const VOXEL_SIZE = 2.0;
+        
+        // Управление
+        const keyState = {
+            w: false, s: false, a: false, d: false,
+            q: false, e: false, space: false
+        };
+        
+        let mouseDown = false;
+        let lastMouseX = 0, lastMouseY = 0;
+        let shipRotationX = 0, shipRotationY = 0;
+        const MOVE_SPEED = 0.5;
+        const MOUSE_SENSITIVITY = 0.003;
+        
+        // --- ОТЛАДКА ---
+        function debug(msg) {
+            console.log(msg);
+            document.getElementById('debug-info').innerHTML = msg;
+        }
+        
+        // --- ПРОГРЕСС ЗАГРУЗКИ ---
+        function updateProgress(percent, text) {
+            document.getElementById('loading-bar').style.width = percent + '%';
+            document.getElementById('loading-text').innerHTML = text || percent + '%';
+        }
+        
+        // --- ФУНКЦИИ ВХОДА ---
+        function login() {
+            username = document.getElementById('username').value;
+            password = document.getElementById('password').value;
+            
+            if (!username) {
+                alert('Введите имя');
+                return;
+            }
+            
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            updateProgress(10, 'Подключение к серверу...');
+            
+            connect(username, password, 'login');
+        }
+        
+        function register() {
+            username = document.getElementById('username').value;
+            password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                alert('Введите имя и пароль');
+                return;
+            }
+            
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            updateProgress(10, 'Регистрация...');
+            
+            connect(username, password, 'register');
+        }
+        
+        // --- ПОДКЛЮЧЕНИЕ К СЕРВЕРУ ---
+        function connect(username, password, action) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+            
+            debug(`Подключение к серверу... (попытка ${reconnectAttempts + 1})`);
+            
+            socket = new WebSocket('ws://localhost:8080');
+            
+            socket.onopen = () => {
+                debug('WebSocket подключен');
+                updateStatus('ПОДКЛЮЧЕНО', 'lime');
+                reconnectAttempts = 0;
+                
+                socket.send(JSON.stringify({
+                    type: 'auth',
+                    username: username,
+                    password: password,
+                    action: action
+                }));
+            };
+            
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'ping') {
+                    socket.send(JSON.stringify({ type: 'pong' }));
+                    lastPingTime = Date.now();
+                } else if (data.type === 'pong') {
+                    const ping = Date.now() - lastPingTime;
+                    document.getElementById('ping-text').innerHTML = ping + ' ms';
+                } else {
+                    handleMessage(data);
+                }
+            };
+            
+            socket.onclose = (event) => {
+                debug(`WebSocket отключен: код ${event.code}`);
+                updateStatus('ОТКЛЮЧЕН', 'red');
+                worldInitialized = false;
+                
+                if (event.code !== 1000 && event.code !== 1001) {
+                    scheduleReconnect();
+                }
+            };
+            
+            socket.onerror = (error) => {
+                debug('WebSocket ошибка');
+                updateStatus('ОШИБКА', 'red');
+            };
+        }
+        
+        // --- АВТОМАТИЧЕСКОЕ ПЕРЕПОДКЛЮЧЕНИЕ ---
+        function scheduleReconnect() {
+            if (reconnectAttempts >= 10) {
+                addChatMessage('❌ Не удалось подключиться к серверу', 'error');
+                return;
+            }
+            
+            reconnectAttempts++;
+            const delay = Math.min(1000 * reconnectAttempts, 10000);
+            
+            addChatMessage(`🔄 Переподключение через ${delay/1000}с...`, 'system');
+            
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+                connect(username, password, 'login');
+            }, delay);
+        }
+        
+        // --- ОБРАБОТКА СООБЩЕНИЙ ---
+        function handleMessage(data) {
+            debug(`Получено: ${data.type}`);
+            
+            switch(data.type) {
+                case 'welcome':
+                    playerId = data.data.playerId;
+                    debug(`ID: ${playerId}`);
+                    break;
+                    
+                case 'auth_success':
+                    updateProgress(50, 'Создание мира...');
+                    
+                    setTimeout(() => {
+                        initScene();
+                        createVoxelShip();
+                        
+                        if (data.data.position) {
+                            playerShip.position.set(
+                                data.data.position.x,
+                                data.data.position.y,
+                                data.data.position.z
+                            );
+                        }
+                        
+                        if (data.data.inventory) {
+                            document.getElementById('resource-metal').innerHTML = data.data.inventory.metal || 100;
+                            document.getElementById('resource-fuel').innerHTML = data.data.inventory.fuel || 50;
+                            document.getElementById('resource-glass').innerHTML = data.data.inventory.glass || 20;
+                        }
+                        
+                        updateProgress(100, 'ГОТОВО!');
+                        
+                        setTimeout(() => {
+                            document.getElementById('loading').classList.add('hidden');
+                            document.getElementById('ui').classList.remove('hidden');
+                            document.getElementById('connection-status').classList.remove('hidden');
+                            document.getElementById('chat').classList.remove('hidden');
+                            document.getElementById('controls-hint').classList.remove('hidden');
+                        }, 500);
+                        
+                        addChatMessage('🚀 Добро пожаловать в CosmoCraft!', 'system');
+                        worldInitialized = true;
+                    }, 100);
+                    break;
+                    
+                case 'world_state':
+                    if (!worldInitialized) return;
+                    
+                    if (data.data.stations && data.data.stations.length > 0) {
+                        data.data.stations.forEach(station => {
+                            createVoxelStation(station);
+                        });
+                    } else {
+                        createTestStation();
+                    }
+                    
+                    if (data.data.players && data.data.players.length > 0) {
+                        data.data.players.forEach(player => {
+                            if (player.playerId !== playerId) {
+                                createVoxelOtherPlayer(player);
+                            }
+                        });
+                    }
+                    break;
+                    
+                case 'player_joined':
+                    addChatMessage(`${data.username} присоединился к игре`, 'system');
+                    if (worldInitialized && data.playerId !== playerId) {
+                        createVoxelOtherPlayer(data);
+                    }
+                    break;
+                    
+                case 'player_left':
+                    addChatMessage(`${data.username} покинул игру`, 'system');
+                    if (players[data.playerId]) {
+                        scene.remove(players[data.playerId]);
+                        delete players[data.playerId];
+                    }
+                    break;
+                    
+                case 'player_moved':
+                    updateOtherPlayer(data.playerId, data.position, data.rotation);
+                    break;
+                    
+                case 'chat':
+                    addChatMessage(data.message, 'chat', data.username);
+                    break;
+                    
+                case 'command_result':
+                    addChatMessage(data.result, 'system');
+                    break;
+                    
+                case 'teleport':
+                    if (playerShip) {
+                        playerShip.position.set(
+                            data.position.x,
+                            data.position.y,
+                            data.position.z
+                        );
+                    }
+                    break;
+                    
+                case 'error':
+                    addChatMessage('❌ ' + data.message, 'error');
+                    break;
+            }
+        }
+        
+        // --- 3D СЦЕНА ---
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a20);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(20, 15, 30);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            
+            // Освещение
+            const ambientLight = new THREE.AmbientLight(0x404060);
+            scene.add(ambientLight);
+            
+            const light1 = new THREE.DirectionalLight(0xffffff, 1.2);
+            light1.position.set(20, 30, 20);
+            light1.castShadow = true;
+            light1.shadow.mapSize.width = 1024;
+            light1.shadow.mapSize.height = 1024;
+            scene.add(light1);
+            
+            const light2 = new THREE.PointLight(0x4466ff, 0.5);
+            light2.position.set(0, 30, 0);
+            scene.add(light2);
+            
+            // Звезды
+            createStars();
+            
+            // Сетка
+            const gridHelper = new THREE.GridHelper(200, 40, 0x00ff88, 0x224422);
+            scene.add(gridHelper);
+        }
+        
+        function createStars() {
+            const starsGeo = new THREE.BufferGeometry();
+            const starsPos = new Float32Array(3000 * 3);
+            for (let i = 0; i < 3000; i++) {
+                starsPos[i*3] = (Math.random() - 0.5) * 800;
+                starsPos[i*3+1] = (Math.random() - 0.5) * 800;
+                starsPos[i*3+2] = (Math.random() - 0.5) * 800;
+            }
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+            const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+            const stars = new THREE.Points(starsGeo, starsMat);
+            scene.add(stars);
+        }
+        
+        // --- ФУНКЦИЯ СОЗДАНИЯ ВОКСЕЛЯ ---
+        function createVoxel(x, y, z, color, parent, emissive = 0x000000) {
+            const geo = new THREE.BoxGeometry(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: color,
+                emissive: emissive,
+                roughness: 0.4,
+                metalness: 0.3
+            });
+            const cube = new THREE.Mesh(geo, mat);
+            cube.position.set(x, y, z);
+            cube.castShadow = true;
+            cube.receiveShadow = true;
+            parent.add(cube);
+            return cube;
+        }
+        
+        // --- ТЕСТОВАЯ СТАНЦИЯ ---
+        function createTestStation() {
+            const testStation = {
+                position: { x: 0, y: 30, z: 0 },
+                hatches: [
+                    { position: { x: 20, y: 30, z: 0 } },
+                    { position: { x: -20, y: 30, z: 0 } },
+                    { position: { x: 0, y: 30, z: 20 } },
+                    { position: { x: 0, y: 30, z: -20 } }
+                ]
+            };
+            createVoxelStation(testStation);
+        }
+        
+        // --- ВОКСЕЛЬНАЯ СТАНЦИЯ ---
+        function createVoxelStation(stationData) {
+            if (stationGroup) {
+                scene.remove(stationGroup);
+            }
+            
+            stationGroup = new THREE.Group();
+            stationGroup.position.set(
+                stationData.position.x,
+                stationData.position.y,
+                stationData.position.z
+            );
+            
+            // Центральная сфера из вокселей
+            for (let x = -5; x <= 5; x++) {
+                for (let y = -5; y <= 5; y++) {
+                    for (let z = -5; z <= 5; z++) {
+                        const dist = Math.sqrt(x*x + y*y + z*z);
+                        if (dist < 5 && dist > 3) {
+                            createVoxel(x * VOXEL_SIZE, y * VOXEL_SIZE, z * VOXEL_SIZE, 0x4488ff, stationGroup, 0x112233);
+                        } else if (dist <= 3) {
+                            createVoxel(x * VOXEL_SIZE, y * VOXEL_SIZE, z * VOXEL_SIZE, 0xffaa44, stationGroup, 0x442200);
+                        }
+                    }
+                }
+            }
+            
+            // Кольцо
+            for (let r = 6; r <= 12; r += 2) {
+                for (let a = 0; a < 24; a++) {
+                    const angle = (a / 24) * Math.PI * 2;
+                    const x = Math.cos(angle) * r * VOXEL_SIZE;
+                    const z = Math.sin(angle) * r * VOXEL_SIZE;
+                    
+                    if (r === 6 || r === 10) {
+                        createVoxel(x, 1 * VOXEL_SIZE, z, 0x88aaff, stationGroup, 0x112233);
+                        createVoxel(x, -1 * VOXEL_SIZE, z, 0x88aaff, stationGroup, 0x112233);
+                    }
+                    createVoxel(x, 0, z, 0x88aaff, stationGroup, 0x112233);
+                }
+            }
+            
+            // Люки
+            if (stationData.hatches) {
+                stationData.hatches.forEach(hatch => {
+                    const hx = hatch.position.x;
+                    const hy = hatch.position.y;
+                    const hz = hatch.position.z;
+                    
+                    // Платформа
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dz = -1; dz <= 1; dz++) {
+                            if (dx !== 0 || dz !== 0) {
+                                createVoxel(hx + dx * VOXEL_SIZE, hy, hz + dz * VOXEL_SIZE, 0x888888, stationGroup);
+                            }
+                        }
+                    }
+                    
+                    // Красные огни
+                    const lightPositions = [
+                        [hx + 1.5 * VOXEL_SIZE, hy + 0.5 * VOXEL_SIZE, hz],
+                        [hx - 1.5 * VOXEL_SIZE, hy + 0.5 * VOXEL_SIZE, hz],
+                        [hx, hy + 0.5 * VOXEL_SIZE, hz + 1.5 * VOXEL_SIZE],
+                        [hx, hy + 0.5 * VOXEL_SIZE, hz - 1.5 * VOXEL_SIZE]
+                    ];
+                    
+                    lightPositions.forEach(lp => {
+                        createVoxel(lp[0], lp[1], lp[2], 0xff0000, stationGroup, 0x330000);
+                    });
+                });
+            }
+            
+            scene.add(stationGroup);
+        }
+        
+        // --- КОРАБЛЬ ИГРОКА ---
+        function createVoxelShip() {
+            playerShip = new THREE.Group();
+            
+            // Корпус
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -2; z <= 2; z++) {
+                        const px = x * VOXEL_SIZE;
+                        const py = y * VOXEL_SIZE;
+                        const pz = z * VOXEL_SIZE;
+                        
+                        if (z === 2) {
+                            createVoxel(px, py, pz, 0xffaa33, playerShip, 0x442200);
+                        } else if (z === -2) {
+                            createVoxel(px, py, pz, 0xff6633, playerShip, 0x552200);
+                        } else {
+                            createVoxel(px, py, pz, 0x88aaff, playerShip, 0x112233);
+                        }
+                    }
+                }
+            }
+            
+            // Кабина
+            createVoxel(0, 2 * VOXEL_SIZE, 0, 0xaaccff, playerShip, 0x112244);
+            
+            // Крылья
+            for (let x = -2; x <= 2; x += 4) {
+                for (let z = -1; z <= 1; z++) {
+                    createVoxel(x * VOXEL_SIZE, 0, z * VOXEL_SIZE, 0xaaaaaa, playerShip);
+                }
+            }
+            
+            // Двигатели
+            createVoxel(1 * VOXEL_SIZE, -1 * VOXEL_SIZE, -2 * VOXEL_SIZE, 0xff5500, playerShip, 0x552200);
+            createVoxel(-1 * VOXEL_SIZE, -1 * VOXEL_SIZE, -2 * VOXEL_SIZE, 0xff5500, playerShip, 0x552200);
+            
+            playerShip.position.set(20, 30, 20);
+            scene.add(playerShip);
+            
+            shipRotationY = playerShip.rotation.y;
+        }
+        
+        // --- КОРАБЛЬ ДРУГОГО ИГРОКА ---
+        function createVoxelOtherPlayer(playerData) {
+            if (!scene) return;
+            
+            const playerGroup = new THREE.Group();
+            
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -2; z <= 2; z++) {
+                        const px = x * VOXEL_SIZE;
+                        const py = y * VOXEL_SIZE;
+                        const pz = z * VOXEL_SIZE;
+                        createVoxel(px, py, pz, 0x44aaff, playerGroup, 0x112244);
+                    }
+                }
+            }
+            
+            playerGroup.position.set(
+                playerData.position?.x || 0,
+                playerData.position?.y || 30,
+                playerData.position?.z || 0
+            );
+            
+            scene.add(playerGroup);
+            players[playerData.playerId] = playerGroup;
+        }
+        
+        function updateOtherPlayer(id, position, rotation) {
+            if (players[id]) {
+                players[id].position.set(position.x, position.y, position.z);
+            }
+        }
+        
+        // --- УПРАВЛЕНИЕ ---
+        window.addEventListener('keydown', (e) => {
+            if (!playerShip) return;
+            
+            switch(e.code) {
+                case 'KeyW': keyState.w = true; e.preventDefault(); break;
+                case 'KeyS': keyState.s = true; e.preventDefault(); break;
+                case 'KeyA': keyState.a = true; e.preventDefault(); break;
+                case 'KeyD': keyState.d = true; e.preventDefault(); break;
+                case 'KeyQ': keyState.q = true; e.preventDefault(); break;
+                case 'KeyE': keyState.e = true; e.preventDefault(); break;
+                case 'Space': keyState.space = true; e.preventDefault(); break;
+                case 'KeyT': 
+                    document.getElementById('chat-input').focus();
+                    e.preventDefault();
+                    break;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            switch(e.code) {
+                case 'KeyW': keyState.w = false; break;
+                case 'KeyS': keyState.s = false; break;
+                case 'KeyA': keyState.a = false; break;
+                case 'KeyD': keyState.d = false; break;
+                case 'KeyQ': keyState.q = false; break;
+                case 'KeyE': keyState.e = false; break;
+                case 'Space': keyState.space = false; break;
+            }
+        });
+        
+        renderer?.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                mouseDown = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+        
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) mouseDown = false;
+        });
+        
+        window.addEventListener('mousemove', (e) => {
+            if (mouseDown && playerShip) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                
+                shipRotationY -= deltaX * MOUSE_SENSITIVITY;
+                shipRotationX += deltaY * MOUSE_SENSITIVITY;
+                shipRotationX = Math.max(-0.8, Math.min(0.8, shipRotationX));
+                
+                playerShip.rotation.x = shipRotationX;
+                playerShip.rotation.y = shipRotationY;
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+        
+        // --- ЧАТ ---
+        function addChatMessage(message, type = 'chat', sender = '') {
+            const messages = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            
+            let color = '#fff';
+            let prefix = '';
+            
+            if (type === 'system') {
+                color = '#0f0';
+                prefix = '🔵 ';
+            } else if (type === 'error') {
+                color = '#f55';
+                prefix = '❌ ';
+            } else if (type === 'chat') {
+                color = '#88aaff';
+                prefix = `💬 ${sender}: `;
+            }
+            
+            div.style.color = color;
+            div.style.margin = '3px 0';
+            div.innerHTML = prefix + message;
+            
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        document.getElementById('chat-send').addEventListener('click', () => {
+            sendChat();
+        });
+        
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChat();
+            }
+        });
+        
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (message && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'chat',
+                    message: message,
+                    channel: 'global'
+                }));
+                input.value = '';
+            }
+        }
+        
+        // --- ОБНОВЛЕНИЕ ---
+        function updatePositionDisplay() {
+            if (playerShip) {
+                const pos = playerShip.position;
+                document.getElementById('ship-pos').innerHTML = 
+                    `${Math.round(pos.x)},${Math.round(pos.y)},${Math.round(pos.z)}`;
+            }
+        }
+        
+        function updateShip() {
+            if (!playerShip) return;
+            
+            if (keyState.w) playerShip.translateZ(-MOVE_SPEED);
+            if (keyState.s) playerShip.translateZ(MOVE_SPEED);
+            if (keyState.a) playerShip.translateX(-MOVE_SPEED);
+            if (keyState.d) playerShip.translateX(MOVE_SPEED);
+            if (keyState.q) playerShip.translateY(MOVE_SPEED);
+            if (keyState.e) playerShip.translateY(-MOVE_SPEED);
+            
+            updatePositionDisplay();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'move',
+                    position: {
+                        x: playerShip.position.x,
+                        y: playerShip.position.y,
+                        z: playerShip.position.z
+                    },
+                    rotation: {
+                        x: playerShip.rotation.x,
+                        y: playerShip.rotation.y,
+                        z: playerShip.rotation.z
+                    }
+                }));
+            }
+            
+            const camOffset = new THREE.Vector3(20, 10, 20);
+            camOffset.applyQuaternion(playerShip.quaternion);
+            camera.position.copy(playerShip.position.clone().add(camOffset));
+            camera.lookAt(playerShip.position);
+        }
+        
+        function updateStatus(text, color) {
+            document.getElementById('status-text').innerHTML = text;
+            document.getElementById('status-text').style.color = color;
+        }
+        
+        // --- АНИМАЦИЯ ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (playerShip) {
+                updateShip();
+            }
+            
+            if (stationGroup) {
+                const time = Date.now() * 0.005;
+                stationGroup.children.forEach(child => {
+                    if (child.material && child.material.emissive && child.material.color.getHex() === 0xff0000) {
+                        const blink = Math.sin(time) > 0;
+                        child.material.emissive.setHex(blink ? 0x660000 : 0x330000);
+                    }
+                });
+            }
+            
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+        
+        // --- ЗАПУСК ---
+        window.addEventListener('load', () => {
+            animate();
+        });
+        
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
