@@ -19,7 +19,8 @@
   "include": [
     "src/client/**/*",
     "src/ui/**/*",
-    "src/types/**/*"
+    "src/types/**/*",
+    "src/designer/**/*"
   ],
   "exclude": ["node_modules", "dist", "src/server"]
 }

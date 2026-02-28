@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CosmoCraft - Конструктор</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+        #designer-ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4466aa;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #voxel-palette {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4466aa;
+            pointer-events: all;
+            z-index: 100;
+            flex-wrap: wrap;
+            max-width: 800px;
+            justify-content: center;
+        }
+        .voxel-button {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .voxel-button:hover {
+            transform: scale(1.1);
+            border-color: #ffaa33;
+        }
+        .voxel-button.selected {
+            border-color: #ffaa33;
+            box-shadow: 0 0 15px #ffaa33;
+        }
+        #stats-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4466aa;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #controls-panel {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4466aa;
+            pointer-events: all;
+            z-index: 100;
+        }
+        button {
+            background: #4466aa;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #5577bb;
+        }
+        hr {
+            border-color: #4466aa;
+            margin: 10px 0;
+        }
+    </style>
+    <!-- Import Map для Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="designer-ui">
+        <h2>🛠️ Конструктор</h2>
+        <div>Режим: <span id="mode-display">Строительство</span></div>
+        <div>Вокселей: <span id="voxel-count">0</span>/262144</div>
+    </div>
+    
+    <div id="stats-panel">
+        <h3>📊 Характеристики</h3>
+        <div>Энергия: <span id="power">+0 / -0</span></div>
+        <div>Щиты: <span id="shields">0</span></div>
+        <div>Груз: <span id="cargo">0</span></div>
+        <div>Орудия: <span id="weapons">0</span></div>
+        <div>Стоимость: <span id="cost">0</span></div>
+    </div>
+    
+    <div id="controls-panel">
+        <h3>🎮 Управление</h3>
+        <button id="mode-place">🔨 Строить</button>
+        <button id="mode-remove">❌ Удалить</button>
+        <button id="mode-paint">🎨 Красить</button>
+        <hr>
+        <button id="save-blueprint">💾 Сохранить</button>
+        <button id="load-blueprint">📂 Загрузить</button>
+        <button id="export-game">🚀 В игру</button>
+        <hr>
+        <button id="clear-all">🗑️ Очистить</button>
+    </div>
+    
+    <div id="voxel-palette"></div>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="/dist/designer/main.js"></script>
+</body>
+</html>
