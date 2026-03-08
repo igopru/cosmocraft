@@ -11,12 +11,15 @@
   },
   "dependencies": {
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "mysql2": "^3.18.0",
     "simplex-noise": "^4.0.3",
     "three": "^0.183.1",
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.3.5",
     "@types/three": "^0.183.1",
     "@types/ws": "^8.18.1",
     "nodemon": "^3.1.14",

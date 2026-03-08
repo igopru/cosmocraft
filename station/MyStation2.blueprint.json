@@ -1,0 +1,309 @@
+{
+  "name": "MyStation2",
+  "version": "1.0",
+  "createdAt": "2026-03-08T09:25:48.534Z",
+  "gridSize": 64,
+  "voxelCount": 50,
+  "voxels": [
+    {
+      "x": 28,
+      "y": 33,
+      "z": 30,
+      "type": "turret_mount"
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "z": 30,
+      "type": "turret_mount"
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "z": 31,
+      "type": "turret_mount"
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "z": 32,
+      "type": "turret_mount"
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "z": 33,
+      "type": "turret_mount"
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 30,
+      "y": 33,
+      "z": 30,
+      "type": "turret_mount"
+    },
+    {
+      "x": 30,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 31,
+      "y": 33,
+      "z": 30,
+      "type": "turret_mount"
+    },
+    {
+      "x": 31,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "z": 30,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 29,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 30,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 31,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 32,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 33,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 37,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 36,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 37,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 38,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 29,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 30,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 31,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 30,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 36,
+      "y": 33,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 34,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 35,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 36,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 37,
+      "y": 30,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 37,
+      "y": 33,
+      "z": 38,
+      "type": "hull_reinforced"
+    }
+  ]
+}

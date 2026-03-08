@@ -1,0 +1,33 @@
+{
+  "name": "MyStation.json",
+  "version": "1.0",
+  "createdAt": "2026-03-08T09:19:58.888Z",
+  "gridSize": 64,
+  "voxelCount": 4,
+  "voxels": [
+    {
+      "x": 33,
+      "y": 32,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "turret_mount"
+    }
+  ]
+}

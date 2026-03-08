@@ -6,8 +6,8 @@ export class Voxel {
   public mesh: THREE.Mesh;
   public type: VoxelType;
   public position: THREE.Vector3;
-  
-  private static readonly colors: Record<VoxelType, number> = {
+
+  public static readonly colors: Record<VoxelType, number> = {
     [VoxelType.EMPTY]: 0x000000,
     [VoxelType.HULL_LIGHT]: 0x888888,
     [VoxelType.HULL_MEDIUM]: 0x666666,

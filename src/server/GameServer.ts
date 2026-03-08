@@ -4,6 +4,10 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { DatabaseManager } from './storage/DatabaseManager';
 import { LotkaVolterraGenerator } from '../world/LotkaVolterraGenerator';
 import * as crypto from 'crypto';
+import express from 'express';
+import path from 'path';
+
+const publicPath = path.join(__dirname, '../../public');
 
 export class GameServer {
   private wss: WebSocketServer;
@@ -11,15 +15,129 @@ export class GameServer {
   private db: DatabaseManager;
   private worldGenerator: LotkaVolterraGenerator;
   private currentWorld: any = null;
-  
+  private app: any;
+
   constructor() {
     this.db = new DatabaseManager();
     this.worldGenerator = new LotkaVolterraGenerator(dbConfig);
     this.wss = new WebSocketServer({ port: serverConfig.port });
-    
+
+    // Настраиваем Express
+    this.app = express();
+    this.app.use(express.json());
+
+    // API для сохранения моделей - регистрируем ДО статики!
+    const fs = require('fs');
+    const stationPath = path.join(__dirname, '../../station');
+
+    // Создаем папку для чертежей, если она не существует
+    if (!fs.existsSync(stationPath)) {
+      fs.mkdirSync(stationPath, { recursive: true });
+      console.log(`📁 Папка для чертежей создана: ${stationPath}`);
+    }
+
+    this.app.get('/api/stations', (req: any, res: any) => {
+      // Список всех моделей
+      fs.readdir(stationPath, (err: any, files: any) => {
+        if (err) {
+          return res.status(500).json({ error: 'Не удалось прочитать папку' });
+        }
+        const blueprints = files.filter((f: string) => f.endsWith('.blueprint.json'));
+        res.json({ stations: blueprints });
+      });
+    });
+
+    this.app.get('/api/stations/:name', (req: any, res: any) => {
+      // Чтение конкретной модели
+      const { name } = req.params;
+      const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.blueprint.json`;
+      const filepath = path.join(stationPath, filename);
+
+      fs.readFile(filepath, 'utf8', (err: any, data: any) => {
+        if (err) {
+          return res.status(404).json({ error: 'Модель не найдена' });
+        }
+        res.json(JSON.parse(data));
+      });
+    });
+
+    this.app.post('/api/stations', (req: any, res: any) => {
+      // Сохранение новой модели
+      const { name, data } = req.body;
+      if (!name || !data) {
+        return res.status(400).json({ error: 'Нет имени или данных' });
+      }
+
+      const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.blueprint.json`;
+      const filepath = path.join(stationPath, filename);
+
+      // Проверяем, существует ли файл
+      if (fs.existsSync(filepath)) {
+        return res.status(409).json({ error: 'Модель с таким именем уже существует', exists: true });
+      }
+
+      fs.writeFile(filepath, JSON.stringify(data, null, 2), (err: any) => {
+        if (err) {
+          return res.status(500).json({ error: 'Не удалось сохранить файл' });
+        }
+        console.log(`💾 Модель сохранена: ${filename}`);
+        res.json({ success: true, filename });
+      });
+    });
+
+    this.app.put('/api/stations/:name', (req: any, res: any) => {
+      // Обновление существующей модели
+      const { name } = req.params;
+      const { data } = req.body;
+
+      const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.blueprint.json`;
+      const filepath = path.join(stationPath, filename);
+
+      if (!fs.existsSync(filepath)) {
+        return res.status(404).json({ error: 'Модель не найдена' });
+      }
+
+      fs.writeFile(filepath, JSON.stringify(data, null, 2), (err: any) => {
+        if (err) {
+          return res.status(500).json({ error: 'Не удалось сохранить файл' });
+        }
+        console.log(`💾 Модель обновлена: ${filename}`);
+        res.json({ success: true, filename });
+      });
+    });
+
+    this.app.delete('/api/stations/:name', (req: any, res: any) => {
+      // Удаление модели
+      const { name } = req.params;
+      const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.blueprint.json`;
+      const filepath = path.join(stationPath, filename);
+
+      if (!fs.existsSync(filepath)) {
+        return res.status(404).json({ error: 'Модель не найдена' });
+      }
+
+      fs.unlink(filepath, (err: any) => {
+        if (err) {
+          return res.status(500).json({ error: 'Не удалось удалить файл' });
+        }
+        console.log(`🗑️ Модель удалена: ${filename}`);
+        res.json({ success: true });
+      });
+    });
+
+    // Раздача статических файлов - ПОСЛЕ API маршрутов!
+    this.app.use(express.static(publicPath));
+
+    this.app.listen(serverConfig.clientPort, () => {
+      console.log(`📁 Static server started on port ${serverConfig.clientPort}`);
+      console.log(`📁 Serving files from: ${publicPath}`);
+      console.log(`📁 Station path: ${stationPath}`);
+      console.log(`📁 API endpoints: /api/stations`);
+    });
+
     this.initialize();
     this.setupWebSocket();
-    
+
     console.log('🚀 Game server started on port 8080');
   }
   

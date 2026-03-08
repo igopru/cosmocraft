@@ -12,6 +12,7 @@ import { HUD } from '../ui/HUD.js';
 import { VoxelStar } from './VoxelStar.js';
 import { AsteroidField } from './AsteroidField.js';
 import { StationModule } from './StationModule.js';
+import { StationManager } from './StationManager.js';
 
 export class CosmoCraftGame {
     private scene: THREE.Scene;
@@ -28,6 +29,7 @@ export class CosmoCraftGame {
     private asteroidField: AsteroidField | null = null;
     private modules: StationModule[] = [];
     private asteroids: THREE.Group[] = [];
+    private stationManager: StationManager;
     
     constructor() {
         console.log('CosmoCraftGame constructor');
@@ -47,10 +49,11 @@ export class CosmoCraftGame {
         
         this.wsClient = new WebSocketClient('ws://localhost:8080');
         this.hud = new HUD();
-        this.buildMenu = new BuildMenu(this.wsClient);
+        this.buildMenu = new BuildMenu(this.wsClient, this);
         this.playerName = localStorage.getItem('playerName') || 'Gora';
         this.star = new VoxelStar(Math.floor(Math.random() * 1000000));
-        
+        this.stationManager = new StationManager(this.scene, this.camera);
+
         this.setupWebSocketHandlers();
         this.wsClient.on('asteroidsData', (data) => {
             console.log('☄️ Получено астероидов:', data.length);
@@ -319,5 +322,104 @@ export class CosmoCraftGame {
         console.log(`✅ Отрисовано астероидов: ${this.asteroids.length}`);
     }
 
+    // Публичные методы для управления станциями
+    public async showStationMenu() {
+        const stationList = await this.stationManager.loadStationList();
+        const menu = document.getElementById('station-menu');
+        const list = document.getElementById('station-list');
 
+        if (!menu || !list) return;
+
+        list.innerHTML = '';
+
+        // Заголовок меню
+        const header = document.createElement('h3');
+        header.textContent = '🚀 Ваши станции';
+        header.style.cssText = 'margin: 0 0 15px 0; color: #ffaa33; text-align: center;';
+        list.appendChild(header);
+
+        // Подсказка
+        const hint = document.createElement('div');
+        hint.style.cssText = 'color: #aaa; padding: 10px; text-align: center; font-size: 13px; margin-bottom: 10px;';
+        hint.textContent = 'Нажмите "Установить" для размещения станции. ESC для отмены.';
+        list.appendChild(hint);
+
+        if (stationList.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'color: #888; padding: 20px; text-align: center;';
+            emptyMsg.textContent = 'Нет сохранённых моделей\nСоздайте станцию в конструкторе или загрузите JSON файл';
+            emptyMsg.style.whiteSpace = 'pre-line';
+            list.appendChild(emptyMsg);
+        } else {
+            stationList.forEach((filename: string) => {
+                const name = filename.replace('.blueprint.json', '');
+                const item = document.createElement('div');
+                item.style.cssText = 'padding: 12px; margin: 8px 0; background: rgba(68, 102, 170, 0.6); border: 1px solid #5577bb; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;';
+                item.onmouseover = () => item.style.background = 'rgba(68, 102, 170, 0.8)';
+                item.onmouseout = () => item.style.background = 'rgba(68, 102, 170, 0.6)';
+                item.innerHTML = `<span style="font-weight: bold;">🚀 ${name}</span>`;
+
+                // Кнопка установки (режим размещения с призраком)
+                const placeBtn = document.createElement('button');
+                placeBtn.textContent = 'Установить';
+                placeBtn.style.cssText = 'margin-left: 10px; padding: 6px 12px; background: #44aa66; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;';
+                placeBtn.onmouseover = () => placeBtn.style.background = '#55bb77';
+                placeBtn.onmouseout = () => placeBtn.style.background = '#44aa66';
+                placeBtn.onclick = async (e: MouseEvent) => {
+                    e.stopPropagation();
+                    // Закрываем меню
+                    this.hideStationMenu();
+                    // Включаем режим размещения
+                    await this.stationManager.enablePlacementMode(filename, (success: boolean) => {
+                        if (success) {
+                            console.log('✅ Станция размещена');
+                        } else {
+                            console.log('❌ Размещение отменено');
+                        }
+                        // Возвращаем меню
+                        this.showStationMenu();
+                    });
+                };
+
+                // Кнопка удаления
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Удалить';
+                deleteBtn.style.cssText = 'margin-left: 5px; padding: 6px 12px; background: #aa4444; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;';
+                deleteBtn.onmouseover = () => deleteBtn.style.background = '#bb5555';
+                deleteBtn.onmouseout = () => deleteBtn.style.background = '#aa4444';
+                deleteBtn.onclick = async (e: MouseEvent) => {
+                    e.stopPropagation();
+                    if (confirm(`Удалить модель "${name}"?`)) {
+                        const response = await fetch(`/api/stations/${name}`, { method: 'DELETE' });
+                        if (response.ok) {
+                            this.stationManager.removeStation(name);
+                            this.showStationMenu(); // Обновить список
+                        }
+                    }
+                };
+
+                item.appendChild(placeBtn);
+                item.appendChild(deleteBtn);
+                list.appendChild(item);
+            });
+        }
+
+        // Кнопка закрытия
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕ Закрыть';
+        closeBtn.style.cssText = 'margin-top: 15px; padding: 8px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;';
+        closeBtn.onclick = () => this.hideStationMenu();
+        list.appendChild(closeBtn);
+
+        menu.style.display = 'block';
+    }
+
+    public hideStationMenu() {
+        const menu = document.getElementById('station-menu');
+        if (menu) menu.style.display = 'none';
+    }
+
+    public getStationManager(): StationManager {
+        return this.stationManager;
+    }
 }

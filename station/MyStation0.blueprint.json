@@ -1,0 +1,15 @@
+{
+  "name": "MyStation0",
+  "version": "1.0",
+  "createdAt": "2026-03-08T10:44:17.041Z",
+  "gridSize": 64,
+  "voxelCount": 1,
+  "voxels": [
+    {
+      "x": 33,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    }
+  ]
+}

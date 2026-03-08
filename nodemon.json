@@ -1,7 +1,7 @@
 {
-  "ignore": ["worlds/*", "*.json"],
-  "watch": ["server.js", "lib/"],
-  "ext": "js",
+  "ignore": ["worlds/*", "*.json", "node_modules"],
+  "watch": ["server.js", "dist/server", "src/server"],
+  "ext": "js ts",
   "delay": 1000,
   "env": {
     "NODE_ENV": "development"

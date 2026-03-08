@@ -1,0 +1,39 @@
+{
+  "name": "DefaultStation",
+  "version": "1.0",
+  "createdAt": "2026-03-08T12:00:00.000Z",
+  "gridSize": 64,
+  "voxelCount": 5,
+  "voxels": [
+    {
+      "x": 30,
+      "y": 32,
+      "z": 30,
+      "type": "hull_light"
+    },
+    {
+      "x": 31,
+      "y": 32,
+      "z": 30,
+      "type": "hull_light"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 30,
+      "type": "hull_light"
+    },
+    {
+      "x": 31,
+      "y": 33,
+      "z": 30,
+      "type": "window"
+    },
+    {
+      "x": 31,
+      "y": 32,
+      "z": 31,
+      "type": "solar_panel"
+    }
+  ]
+}

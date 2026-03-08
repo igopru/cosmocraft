@@ -21,35 +21,128 @@ console.log('🎨 Конструктор CosmoCraft загружен');
 };
 
 (window as any).saveBlueprint = () => {
-    const name = prompt('Введите название чертежа:');
-    if (name) {
-        console.log('Сохранение чертежа:', name);
-        const designer = (window as any).designer;
-        if (designer) {
-            const blueprint = designer.saveBlueprint(name);
-            console.log('Чертеж сохранен:', blueprint);
-            alert(`Чертеж "${name}" сохранен!`);
-        }
-    }
+    const name = prompt('Введите название чертежа:', 'MyStation');
+    if (!name) return;
+
+    const designer = (window as any).designer;
+    if (!designer || !designer.exportBlueprint) return;
+
+    // Экспортируем чертеж
+    const data = designer.exportBlueprint(name);
+    const json = JSON.stringify(data, null, 2);
+
+    // Создаем и скачиваем файл
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name.replace(/[^a-z0-9]/gi, '_')}.blueprint.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    console.log('✅ Чертеж сохранён:', name);
+    alert(`Чертеж "${name}" сохранён в файл!`);
 };
 
 (window as any).loadBlueprint = () => {
-    console.log('Загрузка чертежа');
-    alert('Функция загрузки будет доступна позже');
+    const input = document.getElementById('file-input') as HTMLInputElement;
+    if (input) input.click();
 };
 
-(window as any).exportToGame = () => {
-    console.log('Экспорт в игру');
-    alert('Функция экспорта в игру будет доступна позже');
+// Обработка загрузки файла
+document.getElementById('file-input')?.addEventListener('change', (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const data = JSON.parse(ev.target?.result as string);
+            const designer = (window as any).designer;
+            if (designer && designer.importBlueprint) {
+                designer.importBlueprint(data);
+            }
+        } catch (err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка: неверный формат файла');
+        }
+    };
+    reader.readAsText(file);
+    (e.target as HTMLInputElement).value = '';
+});
+
+(window as any).exportToGame = async () => {
+    const designer = (window as any).designer;
+    if (!designer || !designer.exportBlueprint) {
+        alert('Ошибка: конструктор не загружен');
+        return;
+    }
+
+    const data = designer.exportBlueprint('Export');
+
+    // Показываем диалог сохранения
+    const name = prompt('Введите название модели:', 'MyStation');
+    if (!name) return;
+
+    try {
+        // Отправляем на сервер
+        const response = await fetch('/api/stations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data })
+        });
+
+        // Проверяем Content-Type ответа
+        const contentType = response.headers.get('content-type');
+        let result: any;
+        
+        if (contentType && contentType.includes('application/json')) {
+            result = await response.json();
+        } else {
+            const text = await response.text();
+            console.error('Server response:', text.substring(0, 200));
+            throw new Error('Сервер вернул не JSON ответ');
+        }
+
+        if (response.status === 409) {
+            // Модель уже существует
+            const overwrite = confirm(`Модель "${name}" уже существует. Перезаписать?`);
+            if (!overwrite) return;
+
+            // Обновляем существующую
+            const updateResponse = await fetch(`/api/stations/${name}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data })
+            });
+
+            if (updateResponse.ok) {
+                alert(`✅ Модель "${name}" обновлена!`);
+                // Перенаправляем в игру
+                window.location.href = '/index.html';
+            } else {
+                alert('❌ Ошибка при обновлении модели');
+            }
+        } else if (response.ok) {
+            alert(`✅ Модель "${name}" сохранена!`);
+            // Перенаправляем в игру
+            window.location.href = '/index.html';
+        } else {
+            alert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (err: any) {
+        console.error('Ошибка:', err);
+        alert('❌ Ошибка соединения с сервером: ' + err.message);
+    }
 };
 
 (window as any).clearAll = () => {
     if (confirm('Очистить всё?')) {
-        console.log('Очистка');
         const designer = (window as any).designer;
-        if (designer) {
-            // designer.clearGrid();
-            alert('Очистка пока не реализована');
+        if (designer && designer.clearGrid) {
+            designer.clearGrid();
         }
     }
 };
@@ -133,16 +226,19 @@ function createVoxelPalette() {
             document.querySelectorAll('.voxel-button').forEach(b => {
                 b.classList.remove('selected');
             });
-            
+
             // Выделяем текущую кнопку
             const target = event.currentTarget as HTMLElement;
             target.classList.add('selected');
-            
-            // Получаем тип
+
+            // Получаем тип и передаем в сцену
             const type = target.getAttribute('data-type');
             if (type) {
                 console.log('Выбран тип:', type);
-                // TODO: передать в сцену
+                const designer = (window as any).designer;
+                if (designer) {
+                    designer.setCurrentVoxelType(type);
+                }
             }
         };
         

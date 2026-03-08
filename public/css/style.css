@@ -193,6 +193,29 @@ body {
     color: #aaa;
 }
 
+/* Меню станций */
+#station-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 40, 0.95);
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #4466aa;
+    box-shadow: 0 0 30px rgba(68, 102, 170, 0.5);
+    z-index: 300;
+    min-width: 400px;
+    max-width: 600px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+#station-list {
+    display: flex;
+    flex-direction: column;
+}
+
 /* Стили для разных секторов */
 .sector-danger {
     filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.5));

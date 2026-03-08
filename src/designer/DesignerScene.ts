@@ -82,12 +82,9 @@ export class DesignerScene {
         // gridHelper.position.y = -this.voxelSize/2;
         // this.scene.add(gridHelper);
     
-        // Добавляем оси для ориентации (можно тоже убрать если мешают)
+        // Добавляем оси для ориентации (можно убрать если мешают)
         const axesHelper = new THREE.AxesHelper(50);
         this.scene.add(axesHelper);
-    
-        // Добавим несколько тестовых вокселей для проверки
-        this.addTestVoxels();
     }
     
 
@@ -109,9 +106,9 @@ export class DesignerScene {
             // Вычисляем позицию мыши
             this.mouse.x = (event.clientX / this.renderer.domElement.clientWidth) * 2 - 1;
             this.mouse.y = -(event.clientY / this.renderer.domElement.clientHeight) * 2 + 1;
-        
+
             this.raycaster.setFromCamera(this.mouse, this.camera);
-        
+
             // Проверяем пересечение с существующими вокселями
             const voxelMeshes: THREE.Mesh[] = [];
             for (let x = 0; x < this.gridSize; x++) {
@@ -123,65 +120,73 @@ export class DesignerScene {
                     }
                 }
             }
-        
+
             const intersects = this.raycaster.intersectObjects(voxelMeshes);
-        
+
             if (intersects.length > 0) {
                 // Берем ближайший воксель
                 const intersect = intersects[0];
                 const hitVoxel = intersect.object;
-            
+
                 // Получаем нормаль поверхности, куда попали
                 const faceNormal = intersect.face?.normal.clone();
                 if (faceNormal) {
                     // Преобразуем нормаль в мировые координаты
                     faceNormal.applyQuaternion(hitVoxel.quaternion);
-                
+
                     // Вычисляем центр вокселя, в который попали
                     const hitCenter = hitVoxel.position.clone();
-                
+
                     // Вычисляем позицию для нового вокселя (смещение на 1 воксель по нормали)
                     const placePos = hitCenter.clone().add(
                         faceNormal.multiplyScalar(this.voxelSize)
                     );
-                
+
                     // Округляем до сетки
                     const gridX = Math.round(placePos.x / this.voxelSize) * this.voxelSize;
                     const gridY = Math.round(placePos.y / this.voxelSize) * this.voxelSize;
                     const gridZ = Math.round(placePos.z / this.voxelSize) * this.voxelSize;
-                
-                    // Обновляем подсветку
-                    if (this.highlightMesh) {
+
+                    // Обновляем подсветку ТОЛЬКО для режима строительства
+                    if (this.buildMode === 'place' && this.highlightMesh) {
                         this.highlightMesh.position.set(gridX, gridY, gridZ);
                         this.highlightMesh.visible = true;
-                    
-                        // Сохраняем позицию и режим
                         (this.highlightMesh as any).targetPosition = { x: gridX, y: gridY, z: gridZ };
                         (this.highlightMesh as any).mode = 'place';
+                    } else if (this.highlightMesh) {
+                        this.highlightMesh.visible = false;
                     }
-                
+
                     // Для удаления сохраняем позицию вокселя, в который попали
                     (window as any).deleteTarget = hitCenter.clone();
                     return;
                 }
             } else {
-                // Если нет пересечений - ищем место на сетке
-                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-                const targetPoint = new THREE.Vector3();
-            
-                if (this.raycaster.ray.intersectPlane(plane, targetPoint)) {
-                    const gridX = Math.round(targetPoint.x / this.voxelSize) * this.voxelSize;
-                    const gridY = Math.round(targetPoint.y / this.voxelSize) * this.voxelSize;
-                    const gridZ = Math.round(targetPoint.z / this.voxelSize) * this.voxelSize;
-                
-                    if (this.highlightMesh) {
-                        this.highlightMesh.position.set(gridX, gridY, gridZ);
-                        this.highlightMesh.visible = true;
-                        (this.highlightMesh as any).targetPosition = { x: gridX, y: gridY, z: gridZ };
-                        (this.highlightMesh as any).mode = 'place';
+                // Если нет пересечений - ищем место на сетке (только для строительства)
+                if (this.buildMode === 'place') {
+                    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                    const targetPoint = new THREE.Vector3();
+
+                    if (this.raycaster.ray.intersectPlane(plane, targetPoint)) {
+                        const gridX = Math.round(targetPoint.x / this.voxelSize) * this.voxelSize;
+                        const gridY = Math.round(targetPoint.y / this.voxelSize) * this.voxelSize;
+                        const gridZ = Math.round(targetPoint.z / this.voxelSize) * this.voxelSize;
+
+                        if (this.highlightMesh) {
+                            this.highlightMesh.position.set(gridX, gridY, gridZ);
+                            this.highlightMesh.visible = true;
+                            (this.highlightMesh as any).targetPosition = { x: gridX, y: gridY, z: gridZ };
+                            (this.highlightMesh as any).mode = 'place';
+                        }
+                        (window as any).deleteTarget = null;
+                    } else {
+                        if (this.highlightMesh) {
+                            this.highlightMesh.visible = false;
+                        }
+                        (window as any).deleteTarget = null;
                     }
-                    (window as any).deleteTarget = null;
                 } else {
+                    // Для других режимов скрываем подсветку
                     if (this.highlightMesh) {
                         this.highlightMesh.visible = false;
                     }
@@ -189,7 +194,7 @@ export class DesignerScene {
                 }
             }
         });
-    
+
         this.renderer.domElement.addEventListener('click', (event) => {
             if (this.buildMode === 'place' && this.highlightMesh?.visible) {
                 const pos = (this.highlightMesh as any).targetPosition;
@@ -201,9 +206,15 @@ export class DesignerScene {
                 if (deletePos) {
                     this.removeVoxel(deletePos.x, deletePos.y, deletePos.z);
                 }
+            } else if (this.buildMode === 'paint') {
+                // Покраска - красим воксель, на который кликнули
+                const paintPos = (window as any).deleteTarget;
+                if (paintPos) {
+                    this.paintVoxel(paintPos.x, paintPos.y, paintPos.z);
+                }
             }
         });
-    
+
         this.renderer.domElement.addEventListener('mouseleave', () => {
             if (this.highlightMesh) {
                 this.highlightMesh.visible = false;
@@ -215,61 +226,90 @@ export class DesignerScene {
     // Реализация placeVoxel
     private placeVoxel(x: number, y: number, z: number) {
         // Конвертируем мировые координаты в индексы сетки
-        const gridX = Math.floor((x + this.gridSize * this.voxelSize / 2) / this.voxelSize);
-        const gridY = Math.floor((y + this.gridSize * this.voxelSize / 2) / this.voxelSize);
-        const gridZ = Math.floor((z + this.gridSize * this.voxelSize / 2) / this.voxelSize);
-    
+        const centerOffset = this.gridSize * this.voxelSize / 2;
+        const gridX = Math.round((x + centerOffset) / this.voxelSize);
+        const gridY = Math.round((y + centerOffset) / this.voxelSize);
+        const gridZ = Math.round((z + centerOffset) / this.voxelSize);
+
         // Проверяем границы
-        if (gridX < 0 || gridX >= this.gridSize || 
-            gridY < 0 || gridY >= this.gridSize || 
+        if (gridX < 0 || gridX >= this.gridSize ||
+            gridY < 0 || gridY >= this.gridSize ||
             gridZ < 0 || gridZ >= this.gridSize) {
+            console.log('⚠️ Вне сетки:', { gridX, gridY, gridZ });
             return;
         }
-    
+
         // Проверяем, свободно ли место
-        if (this.grid[gridX][gridY] && this.grid[gridX][gridY][gridZ]) {
-            console.log('Место занято');
+        if (this.grid[gridX]?.[gridY]?.[gridZ]) {
+            console.log('⚠️ Место занято:', { gridX, gridY, gridZ });
             return;
         }
-    
+
         // Создаем новый воксель
         const voxel = new Voxel(this.currentVoxelType, new THREE.Vector3(x, y, z), this.voxelSize);
         this.scene.add(voxel.mesh);
-    
+
         // Инициализируем массив если нужно
         if (!this.grid[gridX]) this.grid[gridX] = [];
         if (!this.grid[gridX][gridY]) this.grid[gridX][gridY] = [];
-    
+
         this.grid[gridX][gridY][gridZ] = voxel;
-    
+
         // Обновляем счетчик
         this.updateVoxelCount();
-    
-        console.log(`Воксель размещен: [${gridX}, ${gridY}, ${gridZ}]`);
+
+        console.log(`✅ Воксель размещен: [${gridX}, ${gridY}, ${gridZ}] = [${x}, ${y}, ${z}]`);
     }
+
     // Реализация removeVoxel
     private removeVoxel(x: number, y: number, z: number) {
         // Конвертируем мировые координаты в индексы сетки
-        const gridX = Math.floor((x + this.gridSize * this.voxelSize / 2) / this.voxelSize);
-        const gridY = Math.floor((y + this.gridSize * this.voxelSize / 2) / this.voxelSize);
-        const gridZ = Math.floor((z + this.gridSize * this.voxelSize / 2) / this.voxelSize);
-    
+        const centerOffset = this.gridSize * this.voxelSize / 2;
+        const gridX = Math.round((x + centerOffset) / this.voxelSize);
+        const gridY = Math.round((y + centerOffset) / this.voxelSize);
+        const gridZ = Math.round((z + centerOffset) / this.voxelSize);
+
         // Проверяем границы
-        if (gridX < 0 || gridX >= this.gridSize || 
-            gridY < 0 || gridY >= this.gridSize || 
+        if (gridX < 0 || gridX >= this.gridSize ||
+            gridY < 0 || gridY >= this.gridSize ||
             gridZ < 0 || gridZ >= this.gridSize) {
             return;
         }
-    
+
         // Проверяем, есть ли воксель
         if (this.grid[gridX]?.[gridY]?.[gridZ]) {
             const voxel = this.grid[gridX][gridY][gridZ];
             this.scene.remove(voxel.mesh);
             voxel.dispose();
             this.grid[gridX][gridY][gridZ] = null as any;
-        
+
             this.updateVoxelCount();
-            console.log('Воксель удален');
+            console.log('✅ Воксель удален:', { gridX, gridY, gridZ });
+        }
+    }
+
+    // Покраска вокселя
+    private paintVoxel(x: number, y: number, z: number) {
+        // Конвертируем мировые координаты в индексы сетки
+        const centerOffset = this.gridSize * this.voxelSize / 2;
+        const gridX = Math.round((x + centerOffset) / this.voxelSize);
+        const gridY = Math.round((y + centerOffset) / this.voxelSize);
+        const gridZ = Math.round((z + centerOffset) / this.voxelSize);
+
+        // Проверяем границы
+        if (gridX < 0 || gridX >= this.gridSize ||
+            gridY < 0 || gridY >= this.gridSize ||
+            gridZ < 0 || gridZ >= this.gridSize) {
+            return;
+        }
+
+        // Проверяем, есть ли воксель
+        if (this.grid[gridX]?.[gridY]?.[gridZ]) {
+            const voxel = this.grid[gridX][gridY][gridZ];
+            // Получаем цвет текущего выбранного типа вокселя
+            const color = Voxel.colors[this.currentVoxelType] || 0x888888;
+            (voxel.mesh.material as THREE.MeshStandardMaterial).color.setHex(color);
+            console.log('✅ Воксель покрашен:', { gridX, gridY, gridZ, color: '#' + color.toString(16) });
         }
     }
     
@@ -298,7 +338,7 @@ export class DesignerScene {
         // Сохраняем текущую постройку как чертеж
         const voxelData = this.compressVoxelData();
         const stats = this.calculateStats();
-        
+
         return {
             id: crypto.randomUUID(),
             name: name,
@@ -313,7 +353,94 @@ export class DesignerScene {
             createdAt: new Date()
         } as Blueprint;
     }
-    
+
+    // Экспорт чертежа в JSON
+    public exportBlueprint(name: string): any {
+        const voxels: any[] = [];
+        for (let x = 0; x < this.gridSize; x++) {
+            for (let y = 0; y < this.gridSize; y++) {
+                for (let z = 0; z < this.gridSize; z++) {
+                    const voxel = this.grid[x][y][z];
+                    if (voxel) {
+                        voxels.push({ x, y, z, type: voxel.type });
+                    }
+                }
+            }
+        }
+        return {
+            name: name,
+            version: '1.0',
+            createdAt: new Date().toISOString(),
+            gridSize: this.gridSize,
+            voxelCount: voxels.length,
+            voxels: voxels
+        };
+    }
+
+    // Импорт чертежа из JSON
+    public importBlueprint(data: any) {
+        this.clearGrid();
+        if (!data.voxels || !Array.isArray(data.voxels)) {
+            console.error('Неверный формат чертежа');
+            alert('Ошибка: неверный формат файла');
+            return;
+        }
+
+        console.log('📥 Загрузка чертежа:', data.name);
+        console.log('Вокселей:', data.voxels.length);
+
+        // Находим минимальные координаты для центрирования
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+        data.voxels.forEach((v: any) => {
+            if (v.x < minX) minX = v.x;
+            if (v.y < minY) minY = v.y;
+            if (v.z < minZ) minZ = v.z;
+            if (v.x > maxX) maxX = v.x;
+            if (v.y > maxY) maxY = v.y;
+            if (v.z > maxZ) maxZ = v.z;
+        });
+
+        // Вычисляем центр модели
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const centerZ = (minZ + maxZ) / 2;
+
+        // Смещаем модель к центру сетки
+        const centerOffset = this.gridSize / 2;
+        const offsetX = Math.round(centerOffset - centerX);
+        const offsetY = Math.round(centerOffset - centerY);
+        const offsetZ = Math.round(centerOffset - centerZ);
+
+        console.log('📐 Центрирование:', { minX, maxX, minY, maxY, minZ, maxZ, offsetX, offsetY, offsetZ });
+
+        let loaded = 0;
+        data.voxels.forEach((v: any) => {
+            const newX = v.x + offsetX;
+            const newY = v.y + offsetY;
+            const newZ = v.z + offsetZ;
+
+            if (newX >= 0 && newX < this.gridSize && newY >= 0 && newY < this.gridSize && newZ >= 0 && newZ < this.gridSize) {
+                const worldX = newX * this.voxelSize;
+                const worldY = newY * this.voxelSize;
+                const worldZ = newZ * this.voxelSize;
+
+                const voxel = new Voxel(v.type as any, new THREE.Vector3(worldX, worldY, worldZ), this.voxelSize);
+                this.scene.add(voxel.mesh);
+
+                if (!this.grid[newX]) this.grid[newX] = [];
+                if (!this.grid[newX][newY]) this.grid[newX][newY] = [];
+                this.grid[newX][newY][newZ] = voxel;
+                loaded++;
+            }
+        });
+
+        this.updateVoxelCount();
+        console.log('✅ Загружено:', loaded, 'из', data.voxels.length);
+        alert(`Загружено вокселей: ${loaded}`);
+    }
+
     public loadBlueprint(blueprint: Blueprint) {
         // Загружаем чертеж в конструктор
         this.clearGrid();
@@ -349,7 +476,7 @@ export class DesignerScene {
         console.log('Режим изменен на:', mode);
     }
 
-    private clearGrid() {
+    public clearGrid() {
         // Очищаем сетку
         for (let x = 0; x < this.gridSize; x++) {
             for (let y = 0; y < this.gridSize; y++) {
@@ -361,6 +488,7 @@ export class DesignerScene {
                 }
             }
         }
+        this.updateVoxelCount();
     }
     
     private decompressVoxelData(voxels: any[]) {

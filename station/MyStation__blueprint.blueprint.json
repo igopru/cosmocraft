@@ -1,0 +1,49 @@
+{
+  "name": "MyStation_.blueprint",
+  "version": "1.0",
+  "voxels": [
+    {
+      "x": 33,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 31,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 33,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    }
+  ],
+  "voxelCount": 7
+}

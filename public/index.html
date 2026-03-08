@@ -12,7 +12,7 @@
         <div class="login-box">
             <h1>CosmoCraft</h1>
             <input type="text" id="player-name" placeholder="Введите имя игрока" value="Gora">
-            <button onclick="window.login()">Войти в игру</button>
+            <button id="btn-login">Войти в игру</button>
             <div id="login-status"></div>
         </div>
     </div>
@@ -31,16 +31,21 @@
                 <div>Редкие: <span id="rare">0</span></div>
             </div>
         </div>
-        
+
         <div id="warning" style="display: none;"></div>
-        
+
         <div id="build-menu"></div>
-        
+
         <div id="mining-progress" style="display: none;">
             <div class="progress-bar">
                 <div class="progress-fill" id="mining-fill"></div>
             </div>
             <div id="mining-status">Добыча...</div>
+        </div>
+
+        <!-- Меню станций -->
+        <div id="station-menu" style="display: none;">
+            <div id="station-list"></div>
         </div>
     </div>
     
@@ -55,34 +60,71 @@
     
     <script type="module">
         import { CosmoCraftGame } from '/dist/client/main.js';
-        
-        // Создаем глобальную функцию login
+
+        // Определяем функцию login сразу
         window.login = function() {
             console.log('Login function called');
             const playerName = document.getElementById('player-name').value;
             if (playerName) {
                 localStorage.setItem('playerName', playerName);
-                
-                // Скрываем меню логина
-                document.getElementById('login-overlay').style.display = 'none';
-                
+
+                // Скрываем меню логина - ВАЖНО: display none
+                const loginOverlay = document.getElementById('login-overlay');
+                if (loginOverlay) {
+                    loginOverlay.style.display = 'none';
+                    console.log('Login overlay hidden');
+                } else {
+                    console.error('Login overlay not found!');
+                }
+
                 // Показываем игровой интерфейс
-                document.getElementById('game-ui').style.display = 'block';
-                
+                const gameUI = document.getElementById('game-ui');
+                if (gameUI) {
+                    gameUI.style.display = 'block';
+                    console.log('Game UI shown');
+                } else {
+                    console.error('Game UI not found!');
+                }
+
                 // Создаем и запускаем игру
                 if (!window.game) {
                     window.game = new CosmoCraftGame();
                 }
                 window.game.start();
+                // Меню станций пока отключено
+                // window.game.showStationMenu();
+            } else {
+                console.error('Player name is empty!');
             }
         };
-        
-        // Загружаем сохраненное имя
-        window.addEventListener('load', () => {
-            console.log('Page loaded');
-            const savedName = localStorage.getItem('playerName');
-            if (savedName) {
-                document.getElementById('player-name').value = savedName;
+
+        // Навешиваем обработчик после загрузки DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded fired');
+            console.log('window.login exists:', typeof window.login === 'function');
+            
+            const btnLogin = document.getElementById('btn-login');
+            console.log('btn-login element:', btnLogin);
+            
+            if (btnLogin) {
+                btnLogin.addEventListener('click', () => {
+                    console.log('Login button clicked');
+                    console.log('window.login type:', typeof window.login);
+                    window.login();
+                });
+            } else {
+                console.error('btn-login not found!');
+            }
+
+            // Также позволяем нажать Enter в поле ввода
+            const playerNameInput = document.getElementById('player-name');
+            if (playerNameInput) {
+                playerNameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        window.login();
+                    }
+                });
+                console.log('player-name input:', playerNameInput.value);
             }
         });
     </script>
