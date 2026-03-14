@@ -178,33 +178,71 @@ private velocity: THREE.Vector3;
 #### Вращение (выбор направления)
 
 **Стрелки:**
-- `←` / `→` — поворот носа влево/вправо (yaw)
-- `↑` / `↓` — тангаж вверх/вниз (pitch)
+- `←` / `→` — рыскание (yaw) вокруг **локальной оси Y** (вертикальная ось) — нос влево/вправо
+- `↑` / `↓` — тангаж (pitch) вокруг **локальной оси X** (ось через крылья) — нос вверх/вниз
 
 **Мышь:** Не используется для управления кораблём (свободна для интерфейса)
 
-**Реализация вращения от стрелок:**
+**Реализация вращения:**
 ```typescript
-// Вращение вокруг локальной оси Y (yaw)
-if (this.keysPressed.has('ArrowLeft')) {
-    const rotationQuaternion = new THREE.Quaternion();
-    rotationQuaternion.setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0).applyQuaternion(this.shipQuaternion),
-        rotationSpeed
-    );
-    this.shipQuaternion.multiply(rotationQuaternion);
+// 1. Определяем локальные оси из текущего кватерниона корабля
+const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(this.ship.quaternion);
+const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(this.ship.quaternion);
+
+// ↑ / ↓ - тангаж (pitch) вокруг локальной оси X
+if (this.keysPressed.has('ArrowUp')) {
+    const q = new THREE.Quaternion().setFromAxisAngle(localX, rotationSpeed);
+    this.ship.quaternion.premultiply(q);
+}
+if (this.keysPressed.has('ArrowDown')) {
+    const q = new THREE.Quaternion().setFromAxisAngle(localX, -rotationSpeed);
+    this.ship.quaternion.premultiply(q);
 }
 
-// Вращение вокруг локальной оси X (pitch)
-if (this.keysPressed.has('ArrowUp')) {
-    const rotationQuaternion = new THREE.Quaternion();
-    rotationQuaternion.setFromAxisAngle(
-        new THREE.Vector3(1, 0, 0).applyQuaternion(this.shipQuaternion),
-        rotationSpeed
-    );
-    this.shipQuaternion.multiply(rotationQuaternion);
+// ← / → - рыскание (yaw) вокруг локальной оси Y
+if (this.keysPressed.has('ArrowLeft')) {
+    const q = new THREE.Quaternion().setFromAxisAngle(localY, rotationSpeed);
+    this.ship.quaternion.premultiply(q);
 }
+if (this.keysPressed.has('ArrowRight')) {
+    const q = new THREE.Quaternion().setFromAxisAngle(localY, -rotationSpeed);
+    this.ship.quaternion.premultiply(q);
+}
+
+// Нормализация (предотвращение дрейфа)
+this.ship.quaternion.normalize();
 ```
+
+**Важно:**
+- **Сначала вычисляем локальные оси** через `applyQuaternion(this.ship.quaternion)`
+- **`premultiply(q)`** — применяет вращение вокруг локальной оси в мировом пространстве
+- **НЕ используем** `ship.rotateX/Y()` — могут давать инверсию на 90°
+- **НЕ используем** `ship.rotation.x += ...` (Euler углы, Gimbal Lock)
+- **Нормализуем кватернион** после каждого изменения
+
+**Корабль крутится как волчок** — нет границ вращения, нет инверсии на 90°.
+
+**Оси вращения корабля (Local Space):**
+```
+         Y (вертикальная ось)
+         ↑
+         │
+         │
+    Z ←──┼──→ X (ось через крылья)
+  (нос)  │
+         │
+    (корма)
+```
+
+- **Ось X** — проходит через крылья слева направо. Вращение = тангаж (pitch), нос вверх/вниз
+- **Ось Y** — вертикальная ось через крышу/дно. Вращение = рыскание (yaw), нос влево/вправо
+- **Ось Z** — проходит через нос и корму. Вращение = крен (roll), не используется
+
+**Важно:** 
+- Корабль смотрит носом в **-Z** (стандарт Three.js)
+- Камера — «ребёнок» корабля (`ship.add(camera)`), находится внутри и смотрит туда же
+- Мы двигаем **ТОЛЬКО корабль**. Космос неподвижен
+- Если корабль повернул нос вверх (`rotateX`), камера автоматически увидит звёзды «внизу», потому что она часть корабля
 
 ---
 
@@ -236,49 +274,36 @@ this.shipPosition.add(this.shipForward.clone().multiplyScalar(moveDistance));
 
 ---
 
-### Привязка камеры
+### Привязка камеры (FPV)
 
-Камера всегда находится в позиции корабля и смотрит **строго в направлении носа корабля**:
+**Камера НЕ является дочерним объектом корабля** — копируем матрицу явно:
 
 ```typescript
-// Позиция камеры = позиция корабля
-this.camera.position.copy(this.shipPosition);
+// При инициализации - НЕ добавляем камеру к кораблю
+// this.ship.add(this.camera);  // Закомментировано!
 
-// Направление взгляда = направление носа (shipForward)
-const lookDirection = this.shipForward.clone().normalize();
-const lookAtPoint = this.shipPosition.clone().add(lookDirection.multiplyScalar(100));
+// Фиксируем "верх" камеры относительно корабля
+this.camera.up.set(0, 0, 1);  // Локальная ось Z корабля = "верх" камеры
+this.camera.matrixAutoUpdate = true;
 
-this.camera.lookAt(lookAtPoint);
+// В update() явно копируем трансформацию
+this.camera.position.copy(this.ship.position);
+this.camera.quaternion.copy(this.ship.quaternion);
 ```
 
-**Важно:** Камера не привязана к звезде (0, 0, 0)! Игрок может смотреть в любую часть космоса, куда направлен нос корабля.
+**Преимущества:**
+- Камера **не пытается выровняться** по мировому горизонту
+- Нет скачков на 180° при перевороте
+- Камера «тупая» — просто зеркало корабля
+- Нет `lookAt()`, нет авто-выравнивания
+
+**Важно:** 
+- Камера **не привязана к звезде** (0, 0, 0)!
+- Камера **не вращается независимо** от корабля
+- Игрок смотрит туда, куда смотрит нос корабля
+- Космос вращается вокруг корабля при повороте
 
 **Начальная позиция:** Корабль спавнится над звездой в (0, 500, 0) и смотрит вниз на звезду.
-
----
-
-### Визуализация корабля
-
-Для наглядности направления корабля используется **красная стрелка** (ArrowHelper):
-
-```typescript
-// Создание стрелки
-this.shipArrow = new THREE.ArrowHelper(
-    new THREE.Vector3(0, 0, -1), // направление
-    this.shipPosition,            // позиция
-    50,                           // длина
-    0xff0000                      // цвет (красный)
-);
-
-// Обновление в update()
-this.shipArrow.position.copy(this.shipPosition);
-this.shipArrow.setDirection(this.shipForward.clone().normalize());
-```
-
-Стрелка показывает:
-- **Направление** — куда смотрит нос корабля
-- **Позицию** — где находится корабль в космосе
-- **Вращение** — как повёрнут корабль относительно осей
 
 ---
 

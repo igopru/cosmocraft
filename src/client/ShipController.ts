@@ -39,6 +39,9 @@ export class ShipController {
     private shipPosition: THREE.Vector3 = new THREE.Vector3();
     private shipQuaternion: THREE.Quaternion = new THREE.Quaternion();
 
+    // Группа корабля (для камеры как дочернего объекта)
+    private ship: THREE.Group;
+
     // Скорость и движение
     private velocity: THREE.Vector3;
     private speed: number = 0;
@@ -94,9 +97,6 @@ export class ShipController {
     private shipRight: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
     private shipUp: THREE.Vector3 = new THREE.Vector3(0, 1, 0);
 
-    // Визуализация корабля (стрелка)
-    private shipArrow: THREE.ArrowHelper | null = null;
-
     // Callback
     private onStatusUpdate: ((status: ShipStatus) => void) | null = null;
 
@@ -113,9 +113,15 @@ export class ShipController {
         this.scene = scene;
         this.renderer = renderer;
 
+        // Создаём группу корабля
+        this.ship = new THREE.Group();
+        this.scene.add(this.ship);
+
         // Инициализация позиции корабля
         this.shipPosition.copy(startPosition);
+        this.ship.position.copy(this.shipPosition);
         this.shipQuaternion.identity();
+        this.ship.quaternion.copy(this.shipQuaternion);
         this.velocity = new THREE.Vector3();
 
         this.boundKeyDown = this.onKeyDown.bind(this);
@@ -123,21 +129,27 @@ export class ShipController {
 
         this.setupEventListeners();
         this.createLaserVisuals();
-        this.createShipArrow();
 
-        // Устанавливаем камеру на позицию корабля
-        this.camera.position.copy(this.shipPosition);
-        // Направляем камеру вниз на звезду (0, 0, 0)
-        this.camera.lookAt(new THREE.Vector3(0, 0, 0));
+        // НЕ добавляем камеру как дочерний объект - будем копировать матрицу явно
+        // Это предотвращает авто-выравнивание камеры движком Three.js
+        // this.ship.add(this.camera);  // Закомментировано!
 
-        // Инициализируем локальные векторы
-        // Корабль смотрит вниз по -Y (к звезде)
-        this.shipForward.set(0, -1, 0);
-        this.shipRight.set(1, 0, 0);
-        this.shipUp.set(0, 0, 1);
+        // Устанавливаем камеру в позицию корабля
+        // Камера смотрит вперёд по локальной оси -Z
+        this.camera.position.set(0, 0, 0);
 
-        // Устанавливаем кватернион соответствующий направлению вниз
-        this.shipQuaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), this.shipForward);
+        // ВАЖНО: Отключаем авто-выравнивание камеры
+        // Камера должна быть "тупой" - никаких lookAt, никаких up.set()
+        this.camera.up.set(0, 0, 1);  // "Верх" камеры = локальная ось Z корабля
+        this.camera.matrixAutoUpdate = true;
+
+        // Поворачиваем корабль носом вниз к звезде (вращение вокруг оси X на 90°)
+        this.ship.rotateX(Math.PI / 2);
+
+        // Инициализируем локальные векторы после поворота
+        this.shipForward.set(0, 0, -1).applyQuaternion(this.ship.quaternion);
+        this.shipRight.set(1, 0, 0).applyQuaternion(this.ship.quaternion);
+        this.shipUp.set(0, 1, 0).applyQuaternion(this.ship.quaternion);
     }
 
     private setupEventListeners() {
@@ -172,20 +184,6 @@ export class ShipController {
         this.laserHitSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
         this.laserHitSphere.visible = false;
         this.scene.add(this.laserHitSphere);
-    }
-
-    // Создание визуальной стрелки корабля (индикатор направления)
-    private createShipArrow() {
-        // Создаём стрелку длиной 50 единиц, красного цвета
-        this.shipArrow = new THREE.ArrowHelper(
-            new THREE.Vector3(0, 0, -1), // направление (вперёд по -Z)
-            this.shipPosition,            // позиция
-            50,                           // длина
-            0xff0000,                     // цвет (красный)
-            10,                           // размер наконечника
-            5                             // ширина основания
-        );
-        this.scene.add(this.shipArrow);
     }
 
     private onKeyDown(event: KeyboardEvent) {
@@ -722,18 +720,22 @@ export class ShipController {
 
     private respawn() {
         this.shipPosition.set(500, 0, 0);
-        this.shipQuaternion.identity();
         this.velocity.set(0, 0, 0);
         this.throttle = 0;
         this.speed = 0;
         this.shields = 100;
 
-        this.camera.position.copy(this.shipPosition);
-        this.camera.lookAt(this.shipPosition.clone().add(new THREE.Vector3(0, 0, -1)));
+        // Сбрасываем вращение корабля
+        this.ship.quaternion.identity();
+        this.ship.position.copy(this.shipPosition);
 
-        this.shipForward.set(0, 0, -1);
-        this.shipRight.set(1, 0, 0);
-        this.shipUp.set(0, 1, 0);
+        // Поворачиваем корабль носом вниз к звезде
+        this.ship.rotateX(Math.PI / 2);
+
+        // Обновляем локальные векторы
+        this.shipForward.set(0, 0, -1).applyQuaternion(this.ship.quaternion);
+        this.shipRight.set(1, 0, 0).applyQuaternion(this.ship.quaternion);
+        this.shipUp.set(0, 1, 0).applyQuaternion(this.ship.quaternion);
 
         console.log('✅ Респавн completed! Щиты восстановлены.');
         this.notifyStatusUpdate();
@@ -742,49 +744,38 @@ export class ShipController {
     // === Обновление физики ===
 
     public update(deltaTime: number) {
-        // 1. Вращение корабля вокруг ЛОКАЛЬНЫХ осей (стрелки)
+        // 1. Вращение корабля через локальные оси (чистая математика)
         const rotationSpeed = 2.5 * deltaTime;
 
-        // Вращение вокруг локальной оси Y (yaw - влево/вправо)
-        if (this.keysPressed.has('ArrowLeft')) {
-            const rotationQuaternion = new THREE.Quaternion();
-            rotationQuaternion.setFromAxisAngle(
-                new THREE.Vector3(0, 1, 0).applyQuaternion(this.shipQuaternion),
-                rotationSpeed
-            );
-            this.shipQuaternion.multiply(rotationQuaternion);
-        }
-        if (this.keysPressed.has('ArrowRight')) {
-            const rotationQuaternion = new THREE.Quaternion();
-            rotationQuaternion.setFromAxisAngle(
-                new THREE.Vector3(0, 1, 0).applyQuaternion(this.shipQuaternion),
-                -rotationSpeed
-            );
-            this.shipQuaternion.multiply(rotationQuaternion);
-        }
+        // Определяем локальные оси из текущего кватерниона корабля
+        const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(this.ship.quaternion);
+        const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(this.ship.quaternion);
 
-        // Вращение вокруг локальной оси X (pitch - вверх/вниз)
+        // ↑ / ↓ - тангаж (pitch) вокруг локальной оси X (через крылья)
         if (this.keysPressed.has('ArrowUp')) {
-            const rotationQuaternion = new THREE.Quaternion();
-            rotationQuaternion.setFromAxisAngle(
-                new THREE.Vector3(1, 0, 0).applyQuaternion(this.shipQuaternion),
-                rotationSpeed
-            );
-            this.shipQuaternion.multiply(rotationQuaternion);
+            const q = new THREE.Quaternion().setFromAxisAngle(localX, rotationSpeed);
+            this.ship.quaternion.premultiply(q);
         }
         if (this.keysPressed.has('ArrowDown')) {
-            const rotationQuaternion = new THREE.Quaternion();
-            rotationQuaternion.setFromAxisAngle(
-                new THREE.Vector3(1, 0, 0).applyQuaternion(this.shipQuaternion),
-                -rotationSpeed
-            );
-            this.shipQuaternion.multiply(rotationQuaternion);
+            const q = new THREE.Quaternion().setFromAxisAngle(localX, -rotationSpeed);
+            this.ship.quaternion.premultiply(q);
         }
 
-        // Нормализуем кватернион
-        this.shipQuaternion.normalize();
+        // ← / → - рыскание (yaw) вокруг локальной оси Y (вертикальная)
+        if (this.keysPressed.has('ArrowLeft')) {
+            const q = new THREE.Quaternion().setFromAxisAngle(localY, rotationSpeed);
+            this.ship.quaternion.premultiply(q);
+        }
+        if (this.keysPressed.has('ArrowRight')) {
+            const q = new THREE.Quaternion().setFromAxisAngle(localY, -rotationSpeed);
+            this.ship.quaternion.premultiply(q);
+        }
 
-        // 2. Обновляем локальные векторы направления
+        // Нормализуем кватернион (предотвращаем дрейф)
+        this.ship.quaternion.normalize();
+
+        // 2. Обновляем локальные векторы из матрицы корабля
+        this.shipQuaternion.copy(this.ship.quaternion);
         this.shipForward.set(0, 0, -1).applyQuaternion(this.shipQuaternion);
         this.shipRight.set(1, 0, 0).applyQuaternion(this.shipQuaternion);
         this.shipUp.set(0, 1, 0).applyQuaternion(this.shipQuaternion);
@@ -801,41 +792,33 @@ export class ShipController {
         const moveDistance = this.speed * deltaTime;
         this.shipPosition.add(this.shipForward.clone().multiplyScalar(moveDistance));
 
-        // 5. Проверка столкновений
+        // 5. Обновляем позицию корабля (камера обновится автоматически через matrixWorld)
+        this.ship.position.copy(this.shipPosition);
+
+        // 6. Проверка столкновений
         if (!this.collisionCooldown) {
             if (this.checkCollisions()) {
                 this.handleCollision();
             }
         }
 
-        // 6. Обновляем позицию камеры
-        this.camera.position.copy(this.shipPosition);
-
-        // 7. Камера смотрит строго в направлении носа корабля
-        // Направление взгляда = shipForward (локальная ось -Z)
-        const lookDirection = this.shipForward.clone().normalize();
-        const lookAtPoint = this.shipPosition.clone().add(lookDirection.multiplyScalar(100));
-
-        this.camera.lookAt(lookAtPoint);
-
-        // 8. Стрельба из лазера
+        // 7. Стрельба из лазера
         if (this.laserFiring) {
             this.fireLaser();
         }
 
-        // 9. Обновление стрелки корабля (визуальный индикатор)
-        if (this.shipArrow) {
-            this.shipArrow.position.copy(this.shipPosition);
-            this.shipArrow.setDirection(this.shipForward.clone().normalize());
-        }
-
-        // 10. Обновление частиц ресурсов
+        // 8. Обновление частиц ресурсов
         this.updateResourceParticles(deltaTime);
 
-        // 11. Обновление спутников (орбита вокруг корабля)
+        // 9. Обновление спутников (орбита вокруг корабля)
         this.updateSatellites(deltaTime);
 
-        // 12. Обновляем HUD
+        // 10. Принудительно копируем позицию и вращение корабля на камеру
+        // Камера должна быть "тупой" - никаких lookAt, никаких up.set()
+        this.camera.position.copy(this.ship.position);
+        this.camera.quaternion.copy(this.ship.quaternion);
+
+        // 11. Обновляем HUD
         this.notifyStatusUpdate();
     }
 
@@ -893,6 +876,11 @@ export class ShipController {
     public dispose() {
         window.removeEventListener('keydown', this.boundKeyDown);
         window.removeEventListener('keyup', this.boundKeyUp);
+
+        // Удаляем группу корабля (камера автоматически отсоединяется)
+        if (this.ship) {
+            this.scene.remove(this.ship);
+        }
 
         if (this.laserBeam) {
             this.scene.remove(this.laserBeam);

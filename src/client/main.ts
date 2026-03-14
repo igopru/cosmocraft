@@ -243,13 +243,13 @@ export class CosmoCraftGame {
             radiation: 10,
             resources: {
                 metal: 1000,
-                silicon: 500,
-                ice: 300,
                 rare: 100
             }
         });
 
-        this.controls.update();
+        // OrbitControls отключен для FPV режима - не обновляем его
+        // this.controls.update();  // Закомментировано!
+
         this.renderer.render(this.scene, this.camera);
     }
 
