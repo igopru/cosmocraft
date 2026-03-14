@@ -377,4 +377,16 @@ export class StationManager {
             (minZ + maxZ) / 2 * 8
         );
     }
+    
+    // Получение списка размещённых станций с позициями (для посадки)
+    getPlacedStations(): Array<{ name: string; position: THREE.Vector3 }> {
+        const stations: Array<{ name: string; position: THREE.Vector3 }> = [];
+        this.stations.forEach((station, name) => {
+            stations.push({
+                name,
+                position: station.position.clone()
+            });
+        });
+        return stations;
+    }
 }

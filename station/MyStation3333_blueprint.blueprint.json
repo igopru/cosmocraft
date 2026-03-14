@@ -1,0 +1,67 @@
+{
+  "name": "MyStation3333.blueprint",
+  "version": "1.0",
+  "voxels": [
+    {
+      "x": 32,
+      "y": 32,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "z": 35,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 36,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 35,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 35,
+      "type": "solar_panel"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 35,
+      "type": "turret_mount"
+    }
+  ],
+  "voxelCount": 10
+}

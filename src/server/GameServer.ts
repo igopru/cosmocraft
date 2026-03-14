@@ -61,6 +61,12 @@ export class GameServer {
       });
     });
 
+    // API для получения конфигурации пилотирования
+    this.app.get('/api/pilot-config', (req: any, res: any) => {
+      const config = (global as any).PILOT_CONFIG || {};
+      res.json(config);
+    });
+
     this.app.post('/api/stations', (req: any, res: any) => {
       // Сохранение новой модели
       const { name, data } = req.body;

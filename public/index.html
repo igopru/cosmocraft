@@ -62,7 +62,7 @@
         import { CosmoCraftGame } from '/dist/client/main.js';
 
         // Определяем функцию login сразу
-        window.login = function() {
+        window.login = async function() {
             console.log('Login function called');
             const playerName = document.getElementById('player-name').value;
             if (playerName) {
@@ -86,13 +86,11 @@
                     console.error('Game UI not found!');
                 }
 
-                // Создаем и запускаем игру
+                // Создаем и запускаем игру (async)
                 if (!window.game) {
                     window.game = new CosmoCraftGame();
+                    await window.game.start();
                 }
-                window.game.start();
-                // Меню станций пока отключено
-                // window.game.showStationMenu();
             } else {
                 console.error('Player name is empty!');
             }

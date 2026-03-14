@@ -1,0 +1,15 @@
+{
+  "name": "Export",
+  "version": "1.0",
+  "createdAt": "2026-03-09T10:20:03.234Z",
+  "gridSize": 64,
+  "voxelCount": 1,
+  "voxels": [
+    {
+      "x": 34,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    }
+  ]
+}

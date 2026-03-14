@@ -13,6 +13,8 @@ import { VoxelStar } from './VoxelStar.js';
 import { AsteroidField } from './AsteroidField.js';
 import { StationModule } from './StationModule.js';
 import { StationManager } from './StationManager.js';
+import { ShipController } from './ShipController.js';
+import { StationShop, StationInfo } from './StationShop.js';
 
 export class CosmoCraftGame {
     private scene: THREE.Scene;
@@ -30,10 +32,16 @@ export class CosmoCraftGame {
     private modules: StationModule[] = [];
     private asteroids: THREE.Group[] = [];
     private stationManager: StationManager;
+    private shipController: ShipController;
+    private isFPVMode: boolean = true; // По умолчанию включен полёт
+    private fpvUI: HTMLElement | null = null;
+    private stationShop: StationShop;
+    private globalKeyDownHandler: ((e: KeyboardEvent) => void) | null = null;
+    private cameraMode: 'follow' | 'orbit' = 'follow'; // follow = корабль, orbit = свободная камера
     
     constructor() {
         console.log('CosmoCraftGame constructor');
-        
+
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x111122);
         
@@ -46,6 +54,7 @@ export class CosmoCraftGame {
         
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
+        this.controls.enabled = false; // Отключаем сразу для POV режима
         
         this.wsClient = new WebSocketClient('ws://localhost:8080');
         this.hud = new HUD();
@@ -53,6 +62,23 @@ export class CosmoCraftGame {
         this.playerName = localStorage.getItem('playerName') || 'Gora';
         this.star = new VoxelStar(Math.floor(Math.random() * 1000000));
         this.stationManager = new StationManager(this.scene, this.camera);
+        this.shipController = new ShipController(
+            this.camera,
+            this.scene,
+            this.renderer,
+            new THREE.Vector3(0, 500, 0) // Спавн над звездой на высоте 500 единиц
+        );
+
+        // Callback для обновления статуса корабля в HUD
+        this.shipController.setOnStatusUpdate((status) => {
+            this.hud.setShipStatus(status);
+        });
+
+        // Инициализация магазина станций
+        this.stationShop = new StationShop();
+
+        // Глобальный обработчик клавиш
+        this.setupGlobalKeyHandler();
 
         this.setupWebSocketHandlers();
         this.wsClient.on('asteroidsData', (data) => {
@@ -80,11 +106,11 @@ export class CosmoCraftGame {
       });
     }
     
-    public start() {
+    public async start() {
         console.log('Game start called');
         if (this.isRunning) return;
         this.isRunning = true;
-        
+
         this.init();
         this.animate();
     }
@@ -180,16 +206,21 @@ export class CosmoCraftGame {
     
     private animate() {
         if (!this.isRunning) return;
-    
+
         requestAnimationFrame(() => this.animate());
-    
-        // Вращаем куб
+
+        const delta = 0.016; // Приблизительно 60 FPS
+
+        // Вращаем тестовый куб
         if (this.cube) {
             this.cube.rotation.x += 0.01;
             this.cube.rotation.y += 0.01;
         }
-    
-        // Вращаем астероиды
+
+        // Обновляем звезду (анимация ядра, короны, частиц)
+        this.star.update(0.016);
+
+        // Обновляем астероиды (вращение каждого астероида)
         if (this.asteroids) {
             this.asteroids.forEach(asteroid => {
                 const speed = (asteroid as any).userData?.rotationSpeed;
@@ -200,10 +231,10 @@ export class CosmoCraftGame {
                 }
             });
         }
-    
-        // Обновляем звезду
-        this.star.update(0.016);
-    
+
+        // Обновляем контроллер корабля (управление, физика)
+        this.shipController.update(delta);
+
         // Обновляем HUD
         this.hud.update({
             position: this.camera.position,
@@ -217,7 +248,7 @@ export class CosmoCraftGame {
                 rare: 100
             }
         });
-    
+
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
@@ -422,4 +453,80 @@ export class CosmoCraftGame {
     public getStationManager(): StationManager {
         return this.stationManager;
     }
+    
+    // ==================== Глобальные обработчики ====================
+    
+    private setupGlobalKeyHandler() {
+        this.globalKeyDownHandler = (e: KeyboardEvent) => {
+            // V - переключение магазина станций (приоритет)
+            if (e.code === 'KeyV') {
+                // Если магазин открыт - закрываем
+                if (this.stationShop.isVisibleShop()) {
+                    this.stationShop.hide();
+                } else {
+                    // Проверяем, есть ли станции рядом
+                    const station = this.findNearestStation();
+                    if (station) {
+                        // Открываем магазин
+                        this.stationShop.show(station);
+                    }
+                }
+            }
+            
+            // C - переключение режима камеры (только в полёте)
+            if (e.code === 'KeyC' && this.isFPVMode) {
+                this.toggleCameraMode();
+            }
+        };
+        
+        document.addEventListener('keydown', this.globalKeyDownHandler);
+    }
+    
+    private findNearestStation(): StationInfo | null {
+        const stations = this.stationManager.getPlacedStations();
+        if (stations.length === 0) return null;
+
+        const shipPos = this.shipController.getPosition();
+        let nearest: StationInfo | null = null;
+        let minDistance = Infinity;
+
+        for (const station of stations) {
+            const distance = shipPos.distanceTo(station.position);
+            if (distance < minDistance && distance < 500) { // В радиусе 500 единиц
+                minDistance = distance;
+                nearest = {
+                    name: station.name,
+                    position: station.position,
+                    distance: distance,
+                    owner: 'Player',
+                    services: ['trade', 'repair', 'refuel']
+                };
+            }
+        }
+
+        return nearest;
+    }
+    
+    // ==================== Режимы Камеры ====================
+    
+    /**
+     * Переключение режима камеры
+     * follow = камера привязана к кораблю (полёт)
+     * orbit = свободная орбитальная камера (осмотр)
+     */
+    private toggleCameraMode() {
+        this.cameraMode = this.cameraMode === 'follow' ? 'orbit' : 'follow';
+
+        if (this.cameraMode === 'orbit') {
+            console.log('📷 Режим осмотра: орбитальная камера');
+            this.controls.enabled = true;
+        } else {
+            console.log('🚀 Режим полёта: камера корабля');
+            this.controls.enabled = false;
+        }
+    }
+
+    // ==================== FPV Режим ====================
+    // Управление кораблём реализовано в ShipController
+    // Клавиши: A/Z - тяга, Стрелки - вращение, Ctrl - лазер, O - люк
 }
