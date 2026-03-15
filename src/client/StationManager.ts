@@ -268,6 +268,14 @@ export class StationManager {
             const blueprint: StationBlueprint = await response.json();
             const stationGroup = new THREE.Group();
             stationGroup.position.copy(position);
+            
+            // Добавляем стандартные свойства для идентификации
+            stationGroup.userData = {
+                isStation: true,
+                stationName: name,
+                owner: 'Player',
+                services: ['water', 'energy', 'rockets']
+            };
 
             const voxelSize = 8;
             for (const voxel of blueprint.voxels) {

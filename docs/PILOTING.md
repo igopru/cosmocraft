@@ -14,7 +14,7 @@
 ├─────────────────────────────────────────────────────────┤
 │  - Физика движения (векторы)                            │
 │  - Вращение (кватернионы + Euler)                       │
-│  - Обработка ввода (клавиатура + мышь)                  │
+│  - Обработка ввода (клавиатура)                  │
 │  - Визуализация (скрытая модель + GunHUD)              │
 │  - Система фокусировки                                  │
 │  - Автоматическая посадка                               │
@@ -104,7 +104,7 @@ this.quaternion = new THREE.Quaternion();
 
 // Вращение от ввода
 this.rotation.y += rotationSpeed * delta;  // Yaw (A/D)
-this.rotation.x += rotationSpeed * delta;  // Pitch (Q/E/Мышь)
+this.rotation.x += rotationSpeed * delta;  // Pitch (↑/↓)
 
 // Синхронизация
 this.quaternion.setFromEuler(this.rotation);
@@ -114,25 +114,6 @@ this.quaternion.setFromEuler(this.rotation);
 1. **Y (Yaw)** - поворот вокруг оси Y (влево/вправо)
 2. **X (Pitch)** - поворот вокруг оси X (вверх/вниз)
 3. **Z (Roll)** - крен (не используется в базовом управлении)
-
-### Вращение от мыши
-
-```typescript
-private handleMouseMove(event: MouseEvent) {
-    if (!this.isMouseLocked) return;
-    
-    const sensitivity = this.config.mouseSensitivity;
-    
-    // Движение мыши → вращение камеры
-    this.rotation.y -= event.movementX * sensitivity;
-    this.rotation.x -= event.movementY * sensitivity;
-    
-    // Ограничение вертикального угла (±90°)
-    this.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.rotation.x));
-    
-    this.quaternion.setFromEuler(this.rotation);
-}
-```
 
 ### Вращение от клавиш
 
@@ -313,18 +294,6 @@ ROTATION_SPEED=3.0
 
 # Затухание скорости (0.0-1.0)
 DAMPING=0.95
-
-# Чувствительность мыши
-MOUSE_SENSITIVITY=0.003
-
-# Дублирование WASD на стрелки
-WASD_ARROWS_DUPLICATE=true
-
-# Скрыть модель корабля
-HIDE_SHIP=true
-
-# Показать ориентиры орудий
-SHOW_GUN_HUD=true
 ```
 
 ### Применение конфигурации
@@ -334,11 +303,7 @@ const config: SpaceshipConfig = {
     maxSpeed: parseFloat(process.env.MAX_SPEED) || 800,
     acceleration: parseFloat(process.env.ACCELERATION) || 200,
     rotationSpeed: parseFloat(process.env.ROTATION_SPEED) || 3.0,
-    damping: parseFloat(process.env.DAMPING) || 0.95,
-    mouseSensitivity: parseFloat(process.env.MOUSE_SENSITIVITY) || 0.003,
-    wasdArrowsDuplicate: process.env.WASD_ARROWS_DUPLICATE === 'true',
-    hideShip: process.env.HIDE_SHIP === 'true',
-    showGunHUD: process.env.SHOW_GUN_HUD === 'true'
+    damping: parseFloat(process.env.DAMPING) || 0.95
 };
 ```
 
@@ -352,21 +317,19 @@ const config: SpaceshipConfig = {
 ├─────────────────────────────────────────────────────────┤
 │  1. handleInput(delta)     - обработка клавиш           │
 │  2. handleStabilization()  - стабилизация вращения      │
-│  3. handleFocus(delta)     - автонаведение на цель      │
-│  4. handleLanding(delta)   - автоматическая посадка     │
-│  5. Ограничение скорости                               │
-│  6. Затухание скорости                                 │
-│  7. Обновление позиции                                 │
-│  8. Синхронизация камеры                               │
+│  3. handleLanding(delta)   - автоматическая посадка     │
+│  4. Ограничение скорости                               │
+│  5. Затухание скорости                                 │
+│  6. Обновление позиции                                 │
+│  7. Синхронизация камеры                               │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Приоритет ввода
 
 1. **Посадка** (клавиша `) - высший приоритет
-2. **Фокусировка** (ЛКМ) - автонаведение
-3. **Стабилизация** (ПКМ) - затухание вращения
-4. **Ручное управление** (WASDQE + мышь)
+2. **Стабилизация** (ПКМ) - затухание вращения
+3. **Ручное управление** (клавиши)
 
 ## Визуализация
 

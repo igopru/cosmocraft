@@ -137,11 +137,9 @@ export class CosmoCraftGame {
         // Дополнительное освещение от звезды
         const ambientLight2 = new THREE.AmbientLight(0x443322);
         this.scene.add(ambientLight2);
-        
-        // Сетка для ориентации
-        const gridHelper = new THREE.GridHelper(200, 20, 0x4444ff, 0x888888);
-        this.scene.add(gridHelper);
-        
+
+        // Сетка для ориентации удалена — в космосе нет верха и низа!
+
         // Тестовый куб
         const geometry = new THREE.BoxGeometry(2, 2, 2);
         const material = new THREE.MeshStandardMaterial({ color: 0xffaa33 });

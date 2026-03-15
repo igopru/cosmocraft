@@ -86,7 +86,9 @@ export class BuildMenu {
         };
         this.container.appendChild(fileInput);
 
-        // Остальные кнопки (заглушки)
+        // Кнопки модулей закомментированы - экономика станции требует заполнения материалами
+        // Солнечные панели и турели будут доступны после настройки экономики
+        /*
         const modules = [
             { type: 'solar', name: 'Солнечные панели', cost: '50M' },
             { type: 'turret', name: 'Турель', cost: '150M' }
@@ -111,6 +113,7 @@ export class BuildMenu {
 
             this.container.appendChild(btn);
         });
+        */
     }
 
     // Открытие диалога выбора файла

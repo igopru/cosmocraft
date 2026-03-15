@@ -108,9 +108,21 @@ export class ShipController {
     // Обработчики
     private boundKeyDown: (e: KeyboardEvent) => void;
     private boundKeyUp: (e: KeyboardEvent) => void;
+    private boundMouseMove: (e: MouseEvent) => void;
+    private boundMouseDown: (e: MouseEvent) => void;
 
     // Состояние клавиш
     private keysPressed: Set<string> = new Set();
+
+    // Позиция мыши для raycasting
+    private mousePosition: THREE.Vector2 = new THREE.Vector2(0, 0);
+    private mouseWorldPosition: THREE.Vector3 | null = null;
+    private hoveredObject: THREE.Object3D | null = null;
+
+    // Выделение объекта и автонаведение
+    private selectedObject: THREE.Object3D | null = null;
+    private selectedObjectMarker: THREE.Mesh | null = null;
+    private isAutoTargeting: boolean = false;
 
     // Лазерная визуализация
     private laserBeamLeft: THREE.Line | null = null;   // Левый лазер
@@ -169,6 +181,8 @@ export class ShipController {
 
         this.boundKeyDown = this.onKeyDown.bind(this);
         this.boundKeyUp = this.onKeyUp.bind(this);
+        this.boundMouseMove = this.onMouseMove.bind(this);
+        this.boundMouseDown = this.onMouseDown.bind(this);
 
         this.setupEventListeners();
         this.createLaserVisuals();
@@ -200,6 +214,166 @@ export class ShipController {
     private setupEventListeners() {
         window.addEventListener('keydown', this.boundKeyDown);
         window.addEventListener('keyup', this.boundKeyUp);
+        window.addEventListener('mousemove', this.boundMouseMove);
+        window.addEventListener('mousedown', this.boundMouseDown);
+    }
+
+    // Обработка клика мыши для выделения объекта
+    private onMouseDown(event: MouseEvent) {
+        if (event.button !== 0) return; // Только левая кнопка
+
+        if (this.hoveredObject) {
+            this.selectObject(this.hoveredObject);
+        } else {
+            this.deselectObject();
+        }
+    }
+
+    // Выделение объекта
+    private selectObject(obj: THREE.Object3D) {
+        // Снимаем выделение с предыдущего
+        this.deselectObject();
+
+        this.selectedObject = obj;
+        this.isAutoTargeting = true;
+
+        // Создаём маркер выделения (перекрестие)
+        this.createSelectionMarker();
+    }
+
+    // Снятие выделения
+    private deselectObject() {
+        this.selectedObject = null;
+        this.isAutoTargeting = false;
+
+        if (this.selectedObjectMarker) {
+            this.scene.remove(this.selectedObjectMarker);
+            this.selectedObjectMarker.geometry.dispose();
+            (this.selectedObjectMarker.material as THREE.Material).dispose();
+            this.selectedObjectMarker = null;
+        }
+    }
+
+    // Создание маркера выделения
+    private createSelectionMarker() {
+        if (!this.selectedObject) return;
+
+        const markerGeo = new THREE.RingGeometry(2, 3, 32);
+        const markerMat = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        this.selectedObjectMarker = new THREE.Mesh(markerGeo, markerMat);
+        this.selectedObjectMarker.position.copy(this.selectedObject.position);
+        this.selectedObjectMarker.lookAt(this.camera.position);
+        this.scene.add(this.selectedObjectMarker);
+    }
+
+    // Обновление маркера выделения
+    private updateSelectionMarker() {
+        if (!this.selectedObjectMarker || !this.selectedObject) return;
+
+        // Маркер следует за объектом
+        this.selectedObjectMarker.position.copy(this.selectedObject.position);
+        this.selectedObjectMarker.lookAt(this.camera.position);
+    }
+
+    // Автонаведение на выделенный объект
+    private handleAutoTargeting(deltaTime: number) {
+        if (!this.isAutoTargeting || !this.selectedObject) return;
+
+        const targetPos = this.selectedObject.position;
+        const toTarget = new THREE.Vector3().subVectors(targetPos, this.shipPosition);
+        toTarget.normalize();
+
+        // Текущее направление корабля
+        const forward = this.shipForward.clone().normalize();
+
+        // Угол между направлением и целью
+        const angle = forward.angleTo(toTarget);
+
+        if (angle > 0.05) {
+            const rotationSpeed = 3.0 * deltaTime;
+
+            // Ось вращения
+            const axis = new THREE.Vector3().crossVectors(forward, toTarget);
+            if (axis.length() > 0.001) {
+                axis.normalize();
+                const q = new THREE.Quaternion();
+                q.setFromAxisAngle(axis, Math.min(angle, rotationSpeed));
+                this.ship.quaternion.premultiply(q);
+                this.ship.quaternion.normalize();
+
+                // Обновляем локальные векторы
+                this.shipForward.set(0, 0, -1).applyQuaternion(this.ship.quaternion);
+                this.shipRight.set(1, 0, 0).applyQuaternion(this.ship.quaternion);
+                this.shipUp.set(0, 1, 0).applyQuaternion(this.ship.quaternion);
+            }
+        }
+    }
+
+    // Обработка движения мыши для raycasting
+    private onMouseMove(event: MouseEvent) {
+        // Нормализованные координаты мыши (-1 до +1)
+        this.mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // Raycasting для определения объекта под мышью
+        this.updateHoveredObject();
+    }
+
+    // Обновление объекта под мышью
+    private updateHoveredObject() {
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(this.mousePosition, this.camera);
+
+        // Ищем пересечения со всеми объектами сцены, кроме GridHelper
+        const intersectableObjects = this.scene.children.filter(child => 
+            !(child instanceof THREE.GridHelper)
+        );
+        const intersects = raycaster.intersectObjects(intersectableObjects, true);
+
+        if (intersects.length > 0) {
+            // Проходим по всем пересечениям
+            for (const intersect of intersects) {
+                let obj: THREE.Object3D | null = intersect.object;
+                
+                // Проверяем сам объект и его родителей
+                while (obj) {
+                    // Звезда (по имени)
+                    if (obj.name === 'star') {
+                        this.hoveredObject = obj;
+                        this.mouseWorldPosition = intersect.point.clone();
+                        return;
+                    }
+                    
+                    // Станция (по userData)
+                    if (obj.userData?.isStation) {
+                        this.hoveredObject = obj;
+                        this.mouseWorldPosition = intersect.point.clone();
+                        return;
+                    }
+                    
+                    // Астероид (по типу)
+                    if (obj.userData?.type) {
+                        this.hoveredObject = obj;
+                        this.mouseWorldPosition = intersect.point.clone();
+                        return;
+                    }
+                    
+                    obj = obj.parent || null;
+                }
+            }
+
+            // Если ничего не нашли
+            this.hoveredObject = null;
+            this.mouseWorldPosition = null;
+        } else {
+            this.hoveredObject = null;
+            this.mouseWorldPosition = null;
+        }
     }
 
     // Создание визуальных эффектов лазера (два луча: левый и правый)
@@ -242,65 +416,65 @@ export class ShipController {
 
     // Создание HUD энергии
     private createEnergyHUD() {
-        // Энергия
+        // Энергия (внизу слева, компактный прямоугольник)
         this.energyHUD = document.createElement('div');
         this.energyHUD.style.cssText = `
             position: fixed;
-            bottom: 100px;
-            right: 20px;
-            width: 200px;
-            padding: 15px;
+            bottom: 10px;
+            left: 10px;
+            width: 140px;
+            padding: 6px;
             background: rgba(0, 50, 100, 0.8);
             border: 2px solid #4488ff;
-            border-radius: 10px;
+            border-radius: 5px;
             color: #fff;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 10px;
             z-index: 1000;
         `;
         this.energyHUD.innerHTML = `
-            <div style="margin-bottom: 10px;">
-                <strong>⚡ ЭНЕРГИЯ</strong>
-                <div style="width: 100%; height: 20px; background: #002244; border-radius: 5px; margin-top: 5px; overflow: hidden;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <strong>⚡</strong>
+                <div style="flex: 1; margin: 0 4px; height: 10px; background: #002244; border-radius: 2px; overflow: hidden;">
                     <div id="energy-bar" style="width: 50%; height: 100%; background: linear-gradient(90deg, #ff8800, #ffcc00); transition: width 0.3s;"></div>
                 </div>
-                <div id="energy-text" style="text-align: right; margin-top: 5px; font-size: 12px;">500 / 1000</div>
+                <span id="energy-text" style="min-width: 45px; text-align: right;">500/1k</span>
             </div>
         `;
         document.body.appendChild(this.energyHUD);
 
-        // Вода
+        // Вода (слева от энергии с отступом, компактный прямоугольник)
         this.waterHUD = document.createElement('div');
         this.waterHUD.style.cssText = `
             position: fixed;
-            bottom: 220px;
-            right: 20px;
-            width: 200px;
-            padding: 15px;
+            bottom: 10px;
+            left: 175px;
+            width: 140px;
+            padding: 6px;
             background: rgba(0, 100, 150, 0.8);
             border: 2px solid #44aaff;
-            border-radius: 10px;
+            border-radius: 5px;
             color: #fff;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 10px;
             z-index: 1000;
         `;
         this.waterHUD.innerHTML = `
-            <div>
-                <strong>💧 ВОДА</strong>
-                <div style="width: 100%; height: 20px; background: #003355; border-radius: 5px; margin-top: 5px; overflow: hidden;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <strong>💧</strong>
+                <div style="flex: 1; margin: 0 4px; height: 10px; background: #003355; border-radius: 2px; overflow: hidden;">
                     <div id="water-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #0066cc, #00aaff); transition: width 0.3s;"></div>
                 </div>
-                <div id="water-text" style="text-align: right; margin-top: 5px; font-size: 12px;">100 / 100</div>
+                <span id="water-text" style="min-width: 45px; text-align: right;">100/100</span>
             </div>
         `;
         document.body.appendChild(this.waterHUD);
 
-        // Радиация
+        // Радиация (справа вверху)
         this.radiationHUD = document.createElement('div');
         this.radiationHUD.style.cssText = `
             position: fixed;
-            bottom: 340px;
+            top: 20px;
             right: 20px;
             width: 200px;
             padding: 15px;
@@ -379,7 +553,8 @@ export class ShipController {
                     : 'linear-gradient(90deg, #ff0000, #ff4400)';
         }
         if (energyText) {
-            energyText.textContent = `${Math.floor(this.energy)} / ${this.energyCapacity}`;
+            const energyK = (this.energyCapacity / 1000).toFixed(0) + 'k';
+            energyText.textContent = `${Math.floor(this.energy)}/${energyK}`;
         }
 
         // Вода
@@ -390,7 +565,7 @@ export class ShipController {
             waterBar.style.width = `${Math.max(0, waterPercent)}%`;
         }
         if (waterText) {
-            waterText.textContent = `${Math.floor(this.water)} / ${this.waterCapacity}`;
+            waterText.textContent = `${Math.floor(this.water)}/${this.waterCapacity}`;
         }
 
         // Радиация (показываем только если > 0)
@@ -491,9 +666,6 @@ export class ShipController {
                 break;
             case 'KeyI':
                 this.showObjectInfo();
-                break;
-            case 'KeyP':
-                this.showPilotInfo();
                 break;
             case 'KeyT':
                 this.showShipInfo();
@@ -850,32 +1022,386 @@ export class ShipController {
     }
 
     private showObjectInfo() {
-        // Поиск ближайшего астероида
-        let nearestAsteroid = null;
-        let minDistance = Infinity;
+        if (!this.hoveredObject) {
+            // Если ничего не под мышью, ищем ближайший объект
+            this.showNearestObjectInfo();
+            return;
+        }
 
+        const obj = this.hoveredObject;
+        const distance = this.shipPosition.distanceTo(obj.position);
+
+        // Звезда (проверяем имя и userData)
+        if (obj.name === 'star' || obj.userData?.isStar) {
+            this.showStarInfo(distance);
+            return;
+        }
+
+        // Астероид
+        if (obj.userData?.type === 'metallic' || 
+            obj.userData?.type === 'silicon' || 
+            obj.userData?.type === 'icy' || 
+            obj.userData?.type === 'rare') {
+            const type = obj.userData?.type || 'Неизвестно';
+            const typeName = this.getAsteroidTypeName(type);
+            
+            let info = `ℹ️ АСТЕРОИД\n\n`;
+            info += `🪨 Тип: ${typeName}\n`;
+            info += `📏 Дистанция: ${distance.toFixed(0)} м\n`;
+            info += `📍 Координаты: (${obj.position.x.toFixed(0)}, ${obj.position.y.toFixed(0)}, ${obj.position.z.toFixed(0)})\n`;
+            info += `\n📦 Ресурсы:\n`;
+            info += this.getResourceInfo(type);
+            
+            // Секретные события (будущая реализация)
+            if (distance < 100) {
+                info += `\n⚠️ ВНИМАНИЕ: Близкое расстояние!\n`;
+            }
+            
+            this.showInfoDialog(info);
+            return;
+        }
+
+        // Станция
+        if (obj.userData?.isStation) {
+            const stationName = obj.userData?.stationName || 'Неизвестная';
+            const stationOwner = obj.userData?.owner || 'Ничья';
+            
+            let info = `🏪 СТАНЦИЯ\n\n`;
+            info += `📛 Название: ${stationName}\n`;
+            info += `👤 Владелец: ${stationOwner}\n`;
+            info += `📏 Дистанция: ${distance.toFixed(0)} м\n`;
+            info += `📍 Координаты: (${obj.position.x.toFixed(0)}, ${obj.position.y.toFixed(0)}, ${obj.position.z.toFixed(0)})\n`;
+            info += `\n🔧 Услуги:\n`;
+            info += `💧 Пополнение воды\n`;
+            info += `⚡ Зарядка от звезды\n`;
+            info += `🚀 Производство ракет\n`;
+            
+            this.showInfoDialog(info);
+            return;
+        }
+
+        // Неизвестный объект
+        this.showInfoDialog(`ℹ️ НЕИЗВЕСТНЫЙ ОБЪЕКТ\n\nТип: ${obj.type || 'N/A'}\nДистанция: ${distance.toFixed(0)} м`);
+    }
+
+    // Показ информации о ближайшем объекте (если мышь не на объекте)
+    private showNearestObjectInfo() {
+        let nearest: THREE.Object3D | null = null;
+        let minDistance = Infinity;
+        let type = 'unknown';
+
+        // Ищем астероиды
         for (const asteroid of this.asteroids) {
             const distance = asteroid.position.distanceTo(this.shipPosition);
             if (distance < minDistance) {
                 minDistance = distance;
-                nearestAsteroid = asteroid;
+                nearest = asteroid;
+                type = asteroid.userData?.type || 'asteroid';
             }
         }
 
-        if (nearestAsteroid) {
-            const type = (nearestAsteroid.userData as any)?.type || 'Неизвестно';
-            alert(`ℹ️ Астероид\nТип: ${type}\nДистанция: ${minDistance.toFixed(0)} м`);
+        if (nearest && minDistance < 1000) {
+            const typeName = this.getAsteroidTypeName(type);
+            let info = `ℹ️ БЛИЖАЙШИЙ ОБЪЕКТ\n\n`;
+            info += `🪨 Тип: ${typeName}\n`;
+            info += `📏 Дистанция: ${minDistance.toFixed(0)} м\n`;
+            info += `\n💡 Подсказка: Наведите мышь на объект для подробной информации`;
+            this.showInfoDialog(info);
         } else {
-            alert('ℹ️ Астероиды не обнаружены');
+            this.showInfoDialog(`ℹ️ ОБЪЕКТЫ НЕ ОБНАРУЖЕНЫ\n\n💡 Подсказка: Наведите мышь на звезду, астероид или станцию`);
         }
     }
 
-    private showPilotInfo() {
-        alert('👤 Пилот:\n- Ранг: Новичок\n- Миссий: 0');
+    // Информация о звезде
+    private showStarInfo(distance: number) {
+        const starPos = new THREE.Vector3(0, 0, 0);
+        const starDistance = this.shipPosition.distanceTo(starPos);
+
+        // Определяем зону
+        let zone = 'КОСМОС';
+        let chargeRate = 0;
+        let radiation = 0;
+        let dangerLevel = 'БЕЗОПАСНО';
+
+        if (starDistance < 50) {
+            zone = 'СМЕРТЕЛЬНАЯ ЗОНА';
+            chargeRate = 100;
+            radiation = 10;
+            dangerLevel = 'КРИТИЧЕСКИ!';
+        } else if (starDistance < 100) {
+            zone = 'АУРА ЗВЕЗДЫ';
+            chargeRate = 100;
+            radiation = 5;
+            dangerLevel = 'ОПАСНО';
+        } else if (starDistance < 300) {
+            zone = 'СРЕДНЯЯ ЗОНА';
+            chargeRate = 30;
+            radiation = 2;
+            dangerLevel = 'ОТНОСИТЕЛЬНО';
+        } else if (starDistance < 1000) {
+            zone = 'ДАЛЬНЯЯ ЗОНА';
+            chargeRate = 5;
+            radiation = 0;
+            dangerLevel = 'БЕЗОПАСНО';
+        }
+
+        let info = `☀️ ЗВЕЗДА\n\n`;
+        info += `📏 Дистанция: ${starDistance.toFixed(0)} м\n`;
+        info += `🌍 Зона: ${zone}\n`;
+        info += `⚡ Зарядка: +${chargeRate} ед/сек\n`;
+        info += `☢️ Радиация: +${radiation}%/сек\n`;
+        info += `⚠️ Опасность: ${dangerLevel}\n`;
+        info += `\n📊 Параметры:\n`;
+        info += `Температура: ${zone === 'АУРА ЗВЕЗДЫ' ? '1000K' : '300K'}\n`;
+        info += `Гравитация: ${starDistance < 100 ? 'ВЫСОКАЯ' : 'НОРМАЛЬНАЯ'}\n`;
+        
+        // Секретные события (задел на будущее)
+        info += `\n🔮 СЕКРЕТНЫЕ СОБЫТИЯ:\n`;
+        info += `✳️ Артефакты: ${this.checkArtifactsNearby() ? 'ОБНАРУЖЕНЫ!' : 'Не обнаружено'}\n`;
+        info += `🌌 Аномалии: ${this.checkAnomaliesNearby() ? 'Зафиксированы!' : 'Нет данных'}\n`;
+        info += `📡 Сигналы: ${this.checkSignalsNearby() ? 'Получен сигнал!' : 'Тишина'}\n`;
+        
+        info += `\n💡 Совет: Избегайте сближения < 50м!`;
+        
+        this.showInfoDialog(info);
+    }
+
+    // Проверка артефактов (заглушка для будущей реализации)
+    private checkArtifactsNearby(): boolean {
+        // Будущая реализация: проверка сценариев
+        return Math.random() < 0.1; // 10% шанс для демонстрации
+    }
+
+    // Проверка аномалий (заглушка)
+    private checkAnomaliesNearby(): boolean {
+        return Math.random() < 0.15;
+    }
+
+    // Проверка сигналов (заглушка)
+    private checkSignalsNearby(): boolean {
+        return Math.random() < 0.2;
+    }
+
+    // Получение информации о ресурсах
+    private getResourceInfo(type: string): string {
+        switch (type) {
+            case 'metallic': return '⚙️ Металл: 10 ед/воксель\n';
+            case 'silicon': return '💎 Кремний: 8 ед/воксель\n';
+            case 'icy': return '❄️ Лёд: 12 ед/воксель\n💧 Вода: 5 ед/лёд\n';
+            case 'rare': return '🌟 Редкие: 3 ед/воксель\n';
+            default: return 'Неизвестно\n';
+        }
+    }
+
+    // Получение названия типа астероида
+    private getAsteroidTypeName(type: string): string {
+        switch (type) {
+            case 'metallic': return 'Металлический';
+            case 'silicon': return 'Кремниевый';
+            case 'icy': return 'Ледяной';
+            case 'rare': return 'Редкий';
+            default: return 'Неизвестный';
+        }
+    }
+
+    // Показ информационного диалога
+    private showInfoDialog(content: string) {
+        // Создаём стильное информационное окно
+        const infoEl = document.createElement('div');
+        infoEl.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
+            border: 2px solid #4488ff;
+            border-radius: 15px;
+            padding: 25px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            z-index: 10000;
+            min-width: 350px;
+            max-width: 500px;
+            box-shadow: 0 0 30px rgba(68, 136, 255, 0.5);
+            white-space: pre-line;
+        `;
+        infoEl.innerHTML = content;
+
+        // Кнопка закрытия
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕ Закрыть';
+        closeBtn.style.cssText = `
+            margin-top: 15px;
+            padding: 8px 20px;
+            background: #4488ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        `;
+        closeBtn.onclick = () => infoEl.remove();
+        infoEl.appendChild(closeBtn);
+
+        // Закрытие по ESC
+        const escHandler = (e: KeyboardEvent) => {
+            if (e.code === 'Escape') {
+                infoEl.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+
+        document.body.appendChild(infoEl);
     }
 
     private showShipInfo() {
-        alert(`🚀 Корабль:\n- Щит: ${this.shields}%\n- Груз: ${this.getTotalCargo()} ед.`);
+        // Показываем паузу меню с полной информацией
+        this.showPauseMenu();
+    }
+
+    // Показ пауза меню
+    private showPauseMenu() {
+        const totalResources = this.cargo.metal + this.cargo.silicon + this.cargo.ice + this.cargo.rare;
+        const stationsCount = 0; // Будет передаваться из main.ts
+
+        const menuEl = document.createElement('div');
+        menuEl.id = 'pause-menu';
+        menuEl.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10001;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        menuEl.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
+                border: 3px solid #4488ff;
+                border-radius: 20px;
+                padding: 30px;
+                color: #fff;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                min-width: 500px;
+                max-width: 700px;
+                box-shadow: 0 0 50px rgba(68, 136, 255, 0.5);
+            ">
+                <h1 style="color: #4488ff; font-size: 28px; margin-bottom: 20px; text-align: center;">🚀 PAUSE</h1>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div style="background: rgba(0, 50, 100, 0.5); padding: 15px; border-radius: 10px; border: 1px solid #4488ff;">
+                        <h2 style="color: #44aaff; margin-bottom: 10px; font-size: 16px;">👤 ИГРОК</h2>
+                        <div>Имя: <span style="color: #fff;">Player</span></div>
+                        <div>Станций: <span style="color: #fff;">${stationsCount}</span></div>
+                        <div>Ранг: <span style="color: #ffaa00;">Новичок</span></div>
+                    </div>
+                    
+                    <div style="background: rgba(0, 50, 100, 0.5); padding: 15px; border-radius: 10px; border: 1px solid #4488ff;">
+                        <h2 style="color: #44aaff; margin-bottom: 10px; font-size: 16px;">🚀 КОРАБЛЬ</h2>
+                        <div>Название: <span style="color: #fff;">Pioneer</span></div>
+                        <div>Щиты: <span style="color: #00ff00;">${this.shields}%</span></div>
+                        <div>Энергия: <span style="color: #ffaa00;">${Math.floor(this.energy)}/${this.energyCapacity}</span></div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(0, 50, 100, 0.5); padding: 15px; border-radius: 10px; border: 1px solid #4488ff; margin-bottom: 20px;">
+                    <h2 style="color: #44aaff; margin-bottom: 10px; font-size: 16px;">📦 РЕСУРСЫ</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>⚙️ Металл: <span style="color: #888;">${this.cargo.metal}</span></div>
+                        <div>💎 Кремний: <span style="color: #66aaff;">${this.cargo.silicon}</span></div>
+                        <div>❄️ Лёд: <span style="color: #aaddff;">${this.cargo.ice}</span></div>
+                        <div>🌟 Редкие: <span style="color: #ffaa44;">${this.cargo.rare}</span></div>
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+                        📦 Всего: <span style="color: #00ff00; font-size: 18px;">${totalResources}</span> ед.
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <button id="ship-select-btn" style="
+                        padding: 12px 20px;
+                        background: #4488ff;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-family: 'Courier New', monospace;
+                        font-size: 14px;
+                    ">🚀 Выбор корабля</button>
+                    
+                    <button id="station-select-btn" style="
+                        padding: 12px 20px;
+                        background: #44aa66;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-family: 'Courier New', monospace;
+                        font-size: 14px;
+                    ">🏪 Выбор станции</button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #4488ff;">
+                    <button id="resume-btn" style="
+                        padding: 15px 40px;
+                        background: #4488ff;
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-family: 'Courier New', monospace;
+                        font-size: 16px;
+                    ">⏯️ ПРОДОЛЖИТЬ</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(menuEl);
+
+        // Обработчики кнопок - вешаем после добавления в DOM
+        setTimeout(() => {
+            const resumeBtn = document.getElementById('resume-btn');
+            const shipBtn = document.getElementById('ship-select-btn');
+            const stationBtn = document.getElementById('station-select-btn');
+            
+            if (resumeBtn) {
+                resumeBtn.addEventListener('click', () => {
+                    menuEl.remove();
+                });
+            }
+            if (shipBtn) {
+                shipBtn.addEventListener('click', () => {
+                    alert('🚀 Выбор корабля: В разработке');
+                });
+            }
+            if (stationBtn) {
+                stationBtn.addEventListener('click', () => {
+                    alert('🏪 Выбор станции: В разработке');
+                });
+            }
+        }, 0);
+
+        // Закрытие по ESC
+        const escHandler = (e: KeyboardEvent) => {
+            if (e.code === 'Escape') {
+                menuEl.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
     }
 
     private getTotalCargo(): number {
@@ -1319,6 +1845,12 @@ export class ShipController {
         this.updateEnergyHUD();
         this.updateAuraPulse(deltaTime);
 
+        // 14. Обновление маркера выделения
+        this.updateSelectionMarker();
+
+        // 15. Автонаведение на выделенный объект
+        this.handleAutoTargeting(deltaTime);
+
         // 10. Принудительно копируем позицию и вращение корабля на камеру
         // Камера должна быть "тупой" - никаких lookAt, никаких up.set()
         this.camera.position.copy(this.ship.position);
@@ -1546,10 +2078,19 @@ export class ShipController {
     public dispose() {
         window.removeEventListener('keydown', this.boundKeyDown);
         window.removeEventListener('keyup', this.boundKeyUp);
+        window.removeEventListener('mousemove', this.boundMouseMove);
+        window.removeEventListener('mousedown', this.boundMouseDown);
 
         // Удаляем группу корабля (камера автоматически отсоединяется)
         if (this.ship) {
             this.scene.remove(this.ship);
+        }
+
+        // Удаляем маркер выделения
+        if (this.selectedObjectMarker) {
+            this.scene.remove(this.selectedObjectMarker);
+            this.selectedObjectMarker.geometry.dispose();
+            (this.selectedObjectMarker.material as THREE.Material).dispose();
         }
 
         // Удаляем лазерные лучи

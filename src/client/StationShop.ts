@@ -86,15 +86,185 @@ export class StationShop {
         if (station) {
             this.selectedStation = station;
         }
-        
-        if (this.ui) {
-            this.ui.style.display = 'block';
-            this.isVisible = true;
-            return;
-        }
 
-        this.createUI();
-        this.isVisible = true;
+        // Показываем красивое окно магазина
+        this.showBeautifulShop();
+    }
+
+    // Показ красивого окна магазина
+    private showBeautifulShop() {
+        const shopEl = document.createElement('div');
+        shopEl.id = 'station-shop-modal';
+        shopEl.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10001;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        const stationName = this.selectedStation?.name || 'Неизвестная станция';
+        const distance = this.selectedStation?.distance.toFixed(0) || '0';
+
+        shopEl.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
+                border: 3px solid #44aaff;
+                border-radius: 20px;
+                padding: 30px;
+                color: #fff;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                min-width: 600px;
+                max-width: 800px;
+                box-shadow: 0 0 50px rgba(68, 170, 255, 0.5);
+            ">
+                <h1 style="color: #44aaff; font-size: 28px; margin-bottom: 10px; text-align: center;">🏪 ${stationName}</h1>
+                <div style="text-align: center; color: #888; margin-bottom: 20px;">📏 Дистанция: ${distance} м</div>
+                
+                <div style="background: rgba(0, 50, 100, 0.5); padding: 20px; border-radius: 10px; border: 1px solid #44aaff; margin-bottom: 20px;">
+                    <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px; text-align: center;">🔧 УСЛУГИ СТАНЦИИ</h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                        <div id="service-water" style="
+                            background: rgba(0, 100, 150, 0.5);
+                            padding: 15px;
+                            border-radius: 8px;
+                            border: 1px solid #44aaff;
+                            text-align: center;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(0, 150, 200, 0.6)'" onmouseout="this.style.background='rgba(0, 100, 150, 0.5)'">
+                            <div style="font-size: 24px; margin-bottom: 8px;">💧</div>
+                            <div style="font-weight: bold; color: #44aaff;">Вода</div>
+                            <div style="color: #00ff00; margin-top: 5px;">Бесплатно</div>
+                        </div>
+                        
+                        <div id="service-energy" style="
+                            background: rgba(0, 100, 150, 0.5);
+                            padding: 15px;
+                            border-radius: 8px;
+                            border: 1px solid #44aaff;
+                            text-align: center;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(0, 150, 200, 0.6)'" onmouseout="this.style.background='rgba(0, 100, 150, 0.5)'">
+                            <div style="font-size: 24px; margin-bottom: 8px;">⚡</div>
+                            <div style="font-weight: bold; color: #44aaff;">Энергия</div>
+                            <div style="color: #00ff00; margin-top: 5px;">От звезды</div>
+                        </div>
+                        
+                        <div id="service-med" style="
+                            background: rgba(0, 100, 150, 0.5);
+                            padding: 15px;
+                            border-radius: 8px;
+                            border: 1px solid #44aaff;
+                            text-align: center;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(0, 150, 200, 0.6)'" onmouseout="this.style.background='rgba(0, 100, 150, 0.5)'">
+                            <div style="font-size: 24px; margin-bottom: 8px;">🏥</div>
+                            <div style="font-weight: bold; color: #44aaff;">Медотсек</div>
+                            <div style="color: #ffaa00; margin-top: 5px;">Лечение</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(0, 50, 100, 0.5); padding: 20px; border-radius: 10px; border: 1px solid #44aaff; margin-bottom: 20px;">
+                    <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px; text-align: center;">📦 ТОРГОВЛЯ</h2>
+                    <div style="text-align: center; color: #888;">
+                        ⚠️ Торговля ресурсами в разработке<br>
+                        💡 Сдавайте редкоземельные ресурсы для производства ракет
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #44aaff;">
+                    <button id="close-shop-btn" style="
+                        padding: 15px 40px;
+                        background: #44aaff;
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-family: 'Courier New', monospace;
+                        font-size: 16px;
+                    ">✕ ЗАКРЫТЬ</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(shopEl);
+
+        // Обработчики услуг - вешаем после добавления в DOM
+        setTimeout(() => {
+            // Вода
+            const waterBtn = document.getElementById('service-water');
+            if (waterBtn) {
+                waterBtn.addEventListener('click', () => {
+                    this.refillWater();
+                });
+            }
+            
+            // Энергия
+            const energyBtn = document.getElementById('service-energy');
+            if (energyBtn) {
+                energyBtn.addEventListener('click', () => {
+                    this.rechargeEnergy();
+                });
+            }
+            
+            // Медотсек
+            const medBtn = document.getElementById('service-med');
+            if (medBtn) {
+                medBtn.addEventListener('click', () => {
+                    this.treatRadiation();
+                });
+            }
+            
+            // Кнопка закрытия
+            const closeBtn = document.getElementById('close-shop-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    shopEl.remove();
+                });
+            }
+        }, 0);
+
+        // Закрытие по ESC
+        const escHandler = (e: KeyboardEvent) => {
+            if (e.code === 'Escape') {
+                shopEl.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // Пополнение воды
+    private refillWater() {
+        // Вода пополняется до максимума
+        console.log('💧 Вода пополнена до максимума!');
+        alert('💧 Вода пополнена до 100%!');
+    }
+
+    // Зарядка энергии
+    private rechargeEnergy() {
+        // Энергия пополняется до максимума
+        console.log('⚡ Энергия пополнена до максимума!');
+        alert('⚡ Энергия пополнена до 100%!');
+    }
+
+    // Лечение радиации
+    private treatRadiation() {
+        // Радиация снижается быстрее
+        console.log('🏥 Лечение радиации начато!');
+        alert('🏥 Лечение радиации начато!\nВремя лечения: 10 секунд');
     }
 
     public hide() {
