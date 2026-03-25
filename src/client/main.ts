@@ -25,6 +25,7 @@ export class CosmoCraftGame {
     private hud: HUD;
     private buildMenu: BuildMenu;
     private playerName: string;
+    private playerIndex: string = ''; // Индексный ID игрока
     private isRunning: boolean = false;
     private cube!: THREE.Mesh;
     private star: VoxelStar;
@@ -38,24 +39,24 @@ export class CosmoCraftGame {
     private stationShop: StationShop;
     private globalKeyDownHandler: ((e: KeyboardEvent) => void) | null = null;
     private cameraMode: 'follow' | 'orbit' = 'follow'; // follow = корабль, orbit = свободная камера
-    
+
     constructor() {
         console.log('CosmoCraftGame constructor');
 
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x111122);
-        
+
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
         this.camera.position.set(10, 10, 20);
-        
+
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
-        
+
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.enabled = false; // Отключаем сразу для POV режима
-        
+
         this.wsClient = new WebSocketClient('ws://localhost:8080');
         this.hud = new HUD();
         this.buildMenu = new BuildMenu(this.wsClient, this);
@@ -81,11 +82,19 @@ export class CosmoCraftGame {
         this.setupGlobalKeyHandler();
 
         this.setupWebSocketHandlers();
+        
+        // Обработка данных игрока
+        this.wsClient.on('playerData', (data) => {
+            console.log('👤 Данные игрока:', data);
+            this.playerIndex = data.playerIndex;
+            this.hud.showMessage(`Добро пожаловать, ${data.playerName}!`);
+        });
+
         this.wsClient.on('asteroidsData', (data) => {
             console.log('☄️ Получено астероидов:', data.length);
             this.renderAsteroids(data);
         });
-        
+
         console.log('CosmoCraftGame created');
     }
     
@@ -164,7 +173,18 @@ export class CosmoCraftGame {
     
     private requestAsteroids() {
         console.log('🔄 Запрашиваем астероиды...');
-        // Запрашиваем каждые 5 секунд
+        // Запрашиваем сразу при старте
+        if (this.wsClient) {
+            this.wsClient.send('getAsteroids', {
+                position: {
+                    x: this.camera.position.x,
+                    y: this.camera.position.y,
+                    z: this.camera.position.z
+                },
+                radius: 3000
+            });
+        }
+        // Затем запрашиваем каждые 5 секунд
         setInterval(() => {
             if (this.wsClient) {
                 this.wsClient.send('getAsteroids', {

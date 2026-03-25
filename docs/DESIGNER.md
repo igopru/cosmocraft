@@ -2,7 +2,16 @@
 
 ## Обзор
 
-**CosmoCraft Designer** — это веб-инструмент для визуального проектирования космических станций и кораблей в стиле воксельной графики. Позволяет пользователям создавать, редактировать, сохранять и загружать чертежи станций с последующим использованием в основной игре.
+**CosmoCraft Designer** — это веб-инструмент для визуального проектирования космических станций и кораблей в стиле воксельной графики. Позволяет пользователям создавать, редактировать, сохранять и загружать чертежи с последующим использованием в основной игре.
+
+### Возможности
+
+- 🛠️ **Три режима работы:** Строительство, Удаление, Покраска
+- 🚀 **Сохранение кораблей** в папку `players/ID_USER/plane/`
+- 🛰️ **Сохранение станций** в папку `players/ID_USER/station/`
+- 💾 **Локальное сохранение** чертежей на диск пользователя
+- 🎨 **14 типов вокселей** с цветовыми подписями
+- 📊 **Характеристики:** энергия, щиты, груз, вооружение, стоимость
 
 ---
 
@@ -14,26 +23,28 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                     Designer Frontend                        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ designer.html│  │   main.ts    │  │DesignerScene.ts│     │
+│  │designer.html │  │   main.ts    │  │DesignerScene.ts│     │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 │         │                  │                  │              │
 │         └──────────────────┼──────────────────┘              │
 │                            │                                 │
 └────────────────────────────┼─────────────────────────────────┘
-                             │ HTTP/WebSocket
+                             │ HTTP
 ┌────────────────────────────┼─────────────────────────────────┐
 │                      Backend Server                          │
 │  ┌─────────────────────────┴─────────────────────────┐      │
 │  │              GameServer.ts (Express + WS)         │      │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌───────────┐ │      │
-│  │  │Static Files │  │ Station API │  │ WebSocket │ │      │
+│  │  │Static Files │  │ Ships API   │  │Stations   │ │      │
+│  │  │             │  │ /api/ships  │  │  API      │ │      │
 │  │  └─────────────┘  └─────────────┘  └───────────┘ │      │
 │  └───────────────────────────────────────────────────┘      │
 │                            │                                 │
 │                            ▼                                 │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │              Файловая система: /src/station/          │  │
-│  │              *.blueprint.json файлы                   │  │
+│  │              Файловая система: /players/              │  │
+│  │   players/{ID}/plane/*.blueprint.json  (корабли)     │  │
+│  │   players/{ID}/station/*.blueprint.json  (станции)   │  │
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -46,19 +57,21 @@
 
 | Файл | Описание |
 |------|----------|
-| `public/designer.html` | HTML-разметка конструктора, UI элементы |
-| `src/designer/main.ts` | Точка входа, обработчики кнопок, горячие клавиши |
-| `src/designer/DesignerScene.ts` | Three.js сцена, рендеринг, взаимодействие |
-| `src/designer/Voxel.ts` | Класс вокселя, материалы, геометрия |
-| `src/designer/BlueprintManager.ts` | Менеджер чертежей (интерфейсы) |
+| `public/designer.html` | HTML-разметка конструктора, UI элементы, кнопки сохранения |
+| `src/designer/main.ts` | Точка входа, обработчики кнопок, функции saveShip/saveStation |
+| `src/designer/DesignerScene.ts` | Three.js сцена, рендеринг, взаимодействие с вокселями |
+| `src/designer/Voxel.ts` | Класс вокселя, материалы, геометрия, типы |
+| `src/designer/BlueprintManager.ts` | Менеджер чертежей (интерфейсы, расчёт характеристик) |
 | `public/dist/designer/*.js` | Скомпилированные JavaScript файлы |
 
 ### Backend (серверная часть)
 
 | Файл | Описание |
 |------|----------|
-| `src/server/GameServer.ts` | Express сервер + WebSocket, API endpoints |
-| `src/station/*.blueprint.json` | Файлы сохранённых моделей |
+| `src/server/GameServer.ts` | Express сервер, API endpoints для кораблей и станций |
+| `src/server/utils/PlayerManager.ts` | Управление папками игроков, сохранение/загрузка |
+| `players/{ID}/plane/*.blueprint.json` | Файлы сохранённых кораблей |
+| `players/{ID}/station/*.blueprint.json` | Файлы сохранённых станций |
 
 ### Игра (клиент)
 
@@ -66,6 +79,7 @@
 |------|----------|
 | `src/client/main.ts` | Основной класс игры CosmoCraftGame |
 | `src/client/StationManager.ts` | Менеджер станций в игре, загрузка/размещение |
+| `src/client/ShipController.ts` | Контроллер управления кораблём |
 | `public/index.html` | HTML-разметка основной игры |
 
 ---
@@ -141,26 +155,105 @@
 
 ## API Reference
 
-### GET `/api/stations`
+### API для кораблей
 
-Возвращает список всех сохранённых моделей.
+#### POST `/api/ships`
+
+Сохраняет новый корабль в папку `players/{ID}/plane/`.
+
+**Request Body:**
+```json
+{
+  "name": "MyShip",
+  "data": {
+    "name": "MyShip",
+    "version": "1.0",
+    "voxels": [...],
+    "voxelCount": 42
+  },
+  "playerName": "Gora"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "filename": "MyShip.blueprint.json",
+  "path": "plane"
+}
+```
+
+**Response (409 Conflict):**
+```json
+{
+  "error": "Корабль с таким именем уже существует",
+  "exists": true
+}
+```
+
+#### PUT `/api/ships/:name`
+
+Обновляет существующий корабль.
+
+**Параметры:**
+- `name` (path) — название корабля
+
+**Request Body:**
+```json
+{
+  "data": {
+    "voxels": [...]
+  },
+  "playerName": "Gora"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "error": "Корабль не найден"
+}
+```
+
+### API для станций
+
+#### GET `/api/stations`
+
+Возвращает список всех сохранённых моделей (личные + общие).
+
+**Query Parameters:**
+- `playerName` (query) — имя игрока (по умолчанию: 'default')
 
 **Response:**
 ```json
 {
-  "stations": [
-    "MyStation.blueprint.json",
-    "TestStation.blueprint.json"
-  ]
+  "personal": [
+    { "name": "MyStation", "type": "personal" }
+  ],
+  "shared": [
+    { "name": "PublicStation", "type": "shared" }
+  ],
+  "all": [...]
 }
 ```
 
-### GET `/api/stations/:name`
+#### GET `/api/stations/:name`
 
 Возвращает данные конкретной модели.
 
 **Параметры:**
-- `name` (path) — название модели (без расширения .blueprint.json)
+- `name` (path) — название модели
+
+**Query Parameters:**
+- `playerName` (query) — имя игрока
 
 **Response:**
 ```json
@@ -171,18 +264,21 @@
 }
 ```
 
-### POST `/api/stations`
+#### POST `/api/stations/save`
 
-Сохраняет новую модель на сервер.
+Сохраняет новую станцию в папку `players/{ID}/station/`.
 
 **Request Body:**
 ```json
 {
   "name": "MyStation",
   "data": {
+    "name": "MyStation",
+    "version": "1.0",
     "voxels": [...],
     "voxelCount": 63
-  }
+  },
+  "playerName": "Gora"
 }
 ```
 
@@ -190,35 +286,44 @@
 ```json
 {
   "success": true,
-  "filename": "MyStation.blueprint.json"
+  "filename": "MyStation.blueprint.json",
+  "path": "station"
 }
 ```
 
 **Response (409 Conflict):**
 ```json
 {
-  "error": "Модель с таким именем уже существует",
+  "error": "Станция с таким именем уже существует",
   "exists": true
 }
 ```
 
-### PUT `/api/stations/:name`
+#### PUT `/api/stations/save/:name`
 
-Обновляет существующую модель.
+Обновляет существующую станцию.
 
 **Параметры:**
-- `name` (path) — название модели
+- `name` (path) — название станции
 
 **Request Body:**
 ```json
 {
   "data": {
     "voxels": [...]
-  }
+  },
+  "playerName": "Gora"
 }
 ```
 
-### DELETE `/api/stations/:name`
+**Response (200 OK):**
+```json
+{
+  "success": true
+}
+```
+
+#### DELETE `/api/stations/:name`
 
 Удаляет модель с сервера.
 
@@ -346,18 +451,46 @@
 
 ## Поток данных
 
-### Сохранение модели в игру
+### Сохранение корабля
 
 ```
-1. Пользователь нажимает "В игру" в дизайнере
-2. main.ts вызывает designer.exportBlueprint()
-3. Получает JSON данные постройки
-4. Запрашивает название у пользователя
-5. Отправляет POST /api/stations с {name, data}
-6. Server проверяет существование файла
-7. Если существует — предлагает перезаписать (PUT)
-8. Сохраняет файл в /src/station/{name}.blueprint.json
-9. Перенаправляет пользователя в /index.html
+1. Пользователь нажимает "🚀 Сохранить корабль"
+2. main.ts запрашивает название корабля через prompt()
+3. designer.exportBlueprint() экспортирует данные постройки
+4. Получение playerName из localStorage.getItem('playerName')
+5. Отправляется POST /api/ships с {name, data, playerName}
+6. Сервер получает или создаёт игрока через PlayerManager
+7. Сервер создаёт папку players/{ID}/plane/ если не существует
+8. Проверка на существование файла с таким именем
+9. Если существует (409) — предлагается перезапись
+10. Сохранение в players/{ID}/plane/{name}.blueprint.json
+```
+
+### Сохранение станции
+
+```
+1. Пользователь нажимает "🛰️ Сохранить станцию"
+2. main.ts запрашивает название станции через prompt()
+3. designer.exportBlueprint() экспортирует данные постройки
+4. Получение playerName из localStorage.getItem('playerName')
+5. Отправляется POST /api/stations/save с {name, data, playerName}
+6. Сервер получает или создаёт игрока через PlayerManager
+7. Сервер создаёт папку players/{ID}/station/ если не существует
+8. Проверка на существование файла с таким именем
+9. Если существует (409) — предлагается перезапись
+10. Сохранение в players/{ID}/station/{name}.blueprint.json
+```
+
+### Локальное сохранение чертежа
+
+```
+1. Пользователь нажимает "💾 Сохранить локально"
+2. main.ts запрашивает название чертежа
+3. designer.exportBlueprint() экспортирует данные
+4. Создаётся Blob с JSON данными
+5. Создаётся временная URL ссылка
+6. Автоматическое скачивание файла {name}.blueprint.json
+7. Очистка URL после скачивания
 ```
 
 ### Загрузка модели в игре
@@ -366,10 +499,10 @@
 1. Пользователь входит в игру
 2. Вызывается game.showStationMenu()
 3. StationManager.loadStationList() делает GET /api/stations
-4. Сервер читает папку /src/station/, возвращает список файлов
+4. Сервер читает папку players/{ID}/, возвращает список файлов
 5. Для каждого файла создаётся UI элемент с кнопками
 6. При нажатии "Разместить":
-   a. GET /api/stations/:name для получения данных
+   a. GET /api/stations/:name?playerName={name} для получения данных
    b. Парсинг JSON чертежа
    c. Создание THREE.Group для станции
    d. Для каждого вокселя создание THREE.Mesh
@@ -522,6 +655,14 @@ window.designer.clearGrid()  // Очистка сцены
 
 ## Контакты и поддержка
 
-Документация создана для проекта CosmoCraft.  
-Версия документа: 1.0  
-Дата последнего обновления: 2026-03-08
+Документация создана для проекта CosmoCraft.
+
+**Версия документа:** 2.0  
+**Дата последнего обновления:** 2026-03-25
+
+### История изменений
+
+| Версия | Дата | Изменения |
+|--------|------|-----------|
+| 2.0 | 2026-03-25 | Добавлено раздельное сохранение кораблей и станций, API endpoints, подписи вокселей |
+| 1.0 | 2026-03-08 | Первоначальная версия документации |

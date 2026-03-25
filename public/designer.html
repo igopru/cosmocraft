@@ -23,22 +23,30 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 10px;
+            gap: 8px;
             background: rgba(0,0,0,0.8);
-            padding: 15px;
+            padding: 10px;
             border-radius: 10px;
             border: 1px solid #4466aa;
             pointer-events: all;
             z-index: 100;
-            flex-wrap: wrap;
-            max-width: 800px;
+            flex-wrap: nowrap;
+            max-width: none;
             justify-content: center;
+            overflow-x: auto;
+        }
+        .voxel-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
         }
         .voxel-button {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border: 2px solid #666;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
             transition: all 0.3s;
         }
@@ -49,6 +57,15 @@
         .voxel-button.selected {
             border-color: #ffaa33;
             box-shadow: 0 0 15px #ffaa33;
+        }
+        .voxel-label {
+            font-size: 8px;
+            color: #ccc;
+            text-align: center;
+            max-width: 50px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         #stats-panel {
             position: absolute;
@@ -115,9 +132,10 @@
         <button id="mode-remove">❌ Удалить</button>
         <button id="mode-paint">🎨 Красить</button>
         <hr>
-        <button id="save-blueprint">💾 Сохранить</button>
+        <button id="save-ship">🚀 Сохранить корабль</button>
+        <button id="save-station">🛰️ Сохранить станцию</button>
+        <button id="save-blueprint">💾 Сохранить локально</button>
         <button id="load-blueprint">📂 Загрузить</button>
-        <button id="export-game">🚀 В игру</button>
         <hr>
         <button id="clear-all">🗑️ Очистить</button>
     </div>

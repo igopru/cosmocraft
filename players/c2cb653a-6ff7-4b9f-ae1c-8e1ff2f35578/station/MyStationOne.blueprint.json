@@ -1,0 +1,531 @@
+{
+  "name": "MyStationOne",
+  "version": "1.0",
+  "createdAt": "2026-03-25T12:14:58.735Z",
+  "gridSize": 64,
+  "voxelCount": 87,
+  "voxels": [
+    {
+      "x": 32,
+      "y": 32,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "z": 37,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 34,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 32,
+      "y": 34,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 34,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 34,
+      "z": 37,
+      "type": "solar_panel"
+    },
+    {
+      "x": 32,
+      "y": 35,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 35,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 35,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 35,
+      "z": 37,
+      "type": "turret_mount"
+    },
+    {
+      "x": 32,
+      "y": 36,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 36,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 36,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 36,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 36,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 36,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 33,
+      "y": 36,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 33,
+      "y": 36,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 37,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 33,
+      "y": 37,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 33,
+      "y": 38,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 33,
+      "y": 38,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 34,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 36,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 36,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 36,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 36,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 37,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 37,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 38,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 38,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 37,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 34,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 37,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 34,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 37,
+      "type": "turret_mount"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 37,
+      "type": "thruster"
+    }
+  ]
+}

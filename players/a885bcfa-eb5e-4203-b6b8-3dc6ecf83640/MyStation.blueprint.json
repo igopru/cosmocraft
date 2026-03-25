@@ -1,0 +1,207 @@
+{
+  "name": "Export",
+  "version": "1.0",
+  "createdAt": "2026-03-20T08:13:12.892Z",
+  "gridSize": 64,
+  "voxelCount": 33,
+  "voxels": [
+    {
+      "x": 33,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 37,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 37,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 36,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 37,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 36,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 36,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 36,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 37,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 37,
+      "z": 39,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 37,
+      "z": 40,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 38,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 34,
+      "y": 39,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 38,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 37,
+      "z": 39,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 37,
+      "z": 40,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 37,
+      "z": 41,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 38,
+      "z": 40,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 39,
+      "z": 40,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 39,
+      "z": 41,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 40,
+      "z": 40,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 40,
+      "z": 41,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 41,
+      "z": 41,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 41,
+      "z": 42,
+      "type": "solar_panel"
+    },
+    {
+      "x": 35,
+      "y": 42,
+      "z": 41,
+      "type": "solar_panel"
+    },
+    {
+      "x": 36,
+      "y": 41,
+      "z": 41,
+      "type": "solar_panel"
+    },
+    {
+      "x": 36,
+      "y": 42,
+      "z": 41,
+      "type": "solar_panel"
+    }
+  ]
+}

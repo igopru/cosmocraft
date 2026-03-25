@@ -1,0 +1,213 @@
+{
+  "name": "MyShipOne",
+  "version": "1.0",
+  "createdAt": "2026-03-25T12:09:41.602Z",
+  "gridSize": 64,
+  "voxelCount": 34,
+  "voxels": [
+    {
+      "x": 31,
+      "y": 35,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 32,
+      "y": 35,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 30,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 31,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 35,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 30,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 31,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 33,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 36,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 37,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 38,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 36,
+      "y": 35,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 36,
+      "y": 35,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 36,
+      "y": 36,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 36,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 37,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 37,
+      "z": 37,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 37,
+      "z": 38,
+      "type": "thruster"
+    },
+    {
+      "x": 37,
+      "y": 38,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 39,
+      "z": 36,
+      "type": "thruster"
+    }
+  ]
+}

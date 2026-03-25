@@ -46,6 +46,96 @@ console.log('🎨 Конструктор CosmoCraft загружен');
     alert(`Чертеж "${name}" сохранён в файл!`);
 };
 
+// Сохранение корабля в папку players/ID/plane
+(window as any).saveShip = async () => {
+    const name = prompt('Введите название корабля:', 'MyShip');
+    if (!name) return;
+
+    const designer = (window as any).designer;
+    if (!designer || !designer.exportBlueprint) return;
+
+    const data = designer.exportBlueprint(name);
+    const playerName = localStorage.getItem('playerName') || 'default';
+
+    try {
+        const response = await fetch('/api/ships', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data, playerName })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`✅ Корабль "${name}" сохранён!`);
+        } else if (response.status === 409) {
+            const overwrite = confirm(`Корабль "${name}" уже существует. Перезаписать?`);
+            if (!overwrite) return;
+            // Обновляем существующий
+            const updateResponse = await fetch(`/api/ships/${name}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data, playerName })
+            });
+            if (updateResponse.ok) {
+                alert(`✅ Корабль "${name}" обновлён!`);
+            } else {
+                alert('❌ Ошибка при обновлении корабля');
+            }
+        } else {
+            alert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (err: any) {
+        console.error('Ошибка:', err);
+        alert('❌ Ошибка соединения с сервером: ' + err.message);
+    }
+};
+
+// Сохранение станции в папку players/ID/station
+(window as any).saveStation = async () => {
+    const name = prompt('Введите название станции:', 'MyStation');
+    if (!name) return;
+
+    const designer = (window as any).designer;
+    if (!designer || !designer.exportBlueprint) return;
+
+    const data = designer.exportBlueprint(name);
+    const playerName = localStorage.getItem('playerName') || 'default';
+
+    try {
+        const response = await fetch('/api/stations/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data, playerName })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`✅ Станция "${name}" сохранена!`);
+        } else if (response.status === 409) {
+            const overwrite = confirm(`Станция "${name}" уже существует. Перезаписать?`);
+            if (!overwrite) return;
+            // Обновляем существующую
+            const updateResponse = await fetch(`/api/stations/save/${name}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data, playerName })
+            });
+            if (updateResponse.ok) {
+                alert(`✅ Станция "${name}" обновлена!`);
+            } else {
+                alert('❌ Ошибка при обновлении станции');
+            }
+        } else {
+            alert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (err: any) {
+        console.error('Ошибка:', err);
+        alert('❌ Ошибка соединения с сервером: ' + err.message);
+    }
+};
+
 (window as any).loadBlueprint = () => {
     const input = document.getElementById('file-input') as HTMLInputElement;
     if (input) input.click();
@@ -72,71 +162,6 @@ document.getElementById('file-input')?.addEventListener('change', (e) => {
     reader.readAsText(file);
     (e.target as HTMLInputElement).value = '';
 });
-
-(window as any).exportToGame = async () => {
-    const designer = (window as any).designer;
-    if (!designer || !designer.exportBlueprint) {
-        alert('Ошибка: конструктор не загружен');
-        return;
-    }
-
-    const data = designer.exportBlueprint('Export');
-
-    // Показываем диалог сохранения
-    const name = prompt('Введите название модели:', 'MyStation');
-    if (!name) return;
-
-    try {
-        // Отправляем на сервер
-        const response = await fetch('/api/stations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, data })
-        });
-
-        // Проверяем Content-Type ответа
-        const contentType = response.headers.get('content-type');
-        let result: any;
-        
-        if (contentType && contentType.includes('application/json')) {
-            result = await response.json();
-        } else {
-            const text = await response.text();
-            console.error('Server response:', text.substring(0, 200));
-            throw new Error('Сервер вернул не JSON ответ');
-        }
-
-        if (response.status === 409) {
-            // Модель уже существует
-            const overwrite = confirm(`Модель "${name}" уже существует. Перезаписать?`);
-            if (!overwrite) return;
-
-            // Обновляем существующую
-            const updateResponse = await fetch(`/api/stations/${name}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data })
-            });
-
-            if (updateResponse.ok) {
-                alert(`✅ Модель "${name}" обновлена!`);
-                // Перенаправляем в игру
-                window.location.href = '/index.html';
-            } else {
-                alert('❌ Ошибка при обновлении модели');
-            }
-        } else if (response.ok) {
-            alert(`✅ Модель "${name}" сохранена!`);
-            // Перенаправляем в игру
-            window.location.href = '/index.html';
-        } else {
-            alert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
-        }
-    } catch (err: any) {
-        console.error('Ошибка:', err);
-        alert('❌ Ошибка соединения с сервером: ' + err.message);
-    }
-};
 
 (window as any).clearAll = () => {
     if (confirm('Очистить всё?')) {
@@ -176,9 +201,10 @@ function setupButtonHandlers() {
     document.getElementById('mode-place')?.addEventListener('click', () => (window as any).setMode('place'));
     document.getElementById('mode-remove')?.addEventListener('click', () => (window as any).setMode('remove'));
     document.getElementById('mode-paint')?.addEventListener('click', () => (window as any).setMode('paint'));
+    document.getElementById('save-ship')?.addEventListener('click', () => (window as any).saveShip());
+    document.getElementById('save-station')?.addEventListener('click', () => (window as any).saveStation());
     document.getElementById('save-blueprint')?.addEventListener('click', () => (window as any).saveBlueprint());
     document.getElementById('load-blueprint')?.addEventListener('click', () => (window as any).loadBlueprint());
-    document.getElementById('export-game')?.addEventListener('click', () => (window as any).exportToGame());
     document.getElementById('clear-all')?.addEventListener('click', () => (window as any).clearAll());
 }
 
@@ -196,7 +222,7 @@ function selectVoxelType(type: string) {
 function createVoxelPalette() {
     const palette = document.getElementById('voxel-palette');
     if (!palette) return;
-    
+
     const voxelTypes = [
         { type: 'hull_light', name: 'Легкий корпус', color: '#888888' },
         { type: 'hull_medium', name: 'Средний корпус', color: '#666666' },
@@ -213,14 +239,24 @@ function createVoxelPalette() {
         { type: 'light', name: 'Свет', color: '#ffffaa' },
         { type: 'paint', name: 'Краска', color: '#88aaff' }
     ];
-    
+
     voxelTypes.forEach(vt => {
+        // Создаём контейнер для элемента
+        const item = document.createElement('div');
+        item.className = 'voxel-item';
+
+        // Кнопка
         const btn = document.createElement('div');
         btn.className = 'voxel-button';
         btn.style.backgroundColor = vt.color;
         btn.title = vt.name;
         btn.setAttribute('data-type', vt.type);
-        
+
+        // Подпись
+        const label = document.createElement('span');
+        label.className = 'voxel-label';
+        label.textContent = vt.name;
+
         btn.onclick = (event) => {
             // Убираем выделение со всех кнопок
             document.querySelectorAll('.voxel-button').forEach(b => {
@@ -241,7 +277,9 @@ function createVoxelPalette() {
                 }
             }
         };
-        
-        palette.appendChild(btn);
+
+        item.appendChild(btn);
+        item.appendChild(label);
+        palette.appendChild(item);
     });
 }

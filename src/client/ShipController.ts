@@ -335,6 +335,13 @@ export class ShipController {
         );
         const intersects = raycaster.intersectObjects(intersectableObjects, true);
 
+        // Отладка: выводим количество пересечений
+        if (intersects.length > 0) {
+            console.log('🎯 Пересечения:', intersects.length);
+            console.log('  Объект:', intersects[0].object.name || 'без имени');
+            console.log('  userData:', intersects[0].object.userData);
+        }
+
         if (intersects.length > 0) {
             // Проходим по всем пересечениям
             for (const intersect of intersects) {
@@ -342,8 +349,11 @@ export class ShipController {
                 
                 // Проверяем сам объект и его родителей
                 while (obj) {
+                    console.log('  Проверка:', obj.name, obj.userData);
+                    
                     // Звезда (по имени)
                     if (obj.name === 'star') {
+                        console.log('✅ Найдена звезда!');
                         this.hoveredObject = obj;
                         this.mouseWorldPosition = intersect.point.clone();
                         return;
@@ -351,6 +361,7 @@ export class ShipController {
                     
                     // Станция (по userData)
                     if (obj.userData?.isStation) {
+                        console.log('✅ Найдена станция!');
                         this.hoveredObject = obj;
                         this.mouseWorldPosition = intersect.point.clone();
                         return;
@@ -358,6 +369,7 @@ export class ShipController {
                     
                     // Астероид (по типу)
                     if (obj.userData?.type) {
+                        console.log('✅ Найден астероид!');
                         this.hoveredObject = obj;
                         this.mouseWorldPosition = intersect.point.clone();
                         return;
@@ -368,6 +380,7 @@ export class ShipController {
             }
 
             // Если ничего не нашли
+            console.log('❌ Ничего не найдено');
             this.hoveredObject = null;
             this.mouseWorldPosition = null;
         } else {
@@ -1263,6 +1276,293 @@ export class ShipController {
         this.showPauseMenu();
     }
 
+    // Показ меню выбора станции
+    private showStationSelectionMenu() {
+        const stationEl = document.createElement('div');
+        stationEl.id = 'station-selection-modal';
+        stationEl.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10002;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        stationEl.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
+                border: 3px solid #44aaff;
+                border-radius: 20px;
+                padding: 30px;
+                color: #fff;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                min-width: 700px;
+                max-width: 900px;
+                box-shadow: 0 0 50px rgba(68, 170, 255, 0.5);
+            ">
+                <h1 style="color: #44aaff; font-size: 28px; margin-bottom: 20px; text-align: center;">🏪 ВЫБОР СТАНЦИИ</h1>
+                
+                <div style="margin-bottom: 20px;">
+                    <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px;">📦 ЛИЧНЫЕ СТАНЦИИ</h2>
+                    <div id="personal-stations-list" style="
+                        max-height: 200px;
+                        overflow-y: auto;
+                        background: rgba(0, 30, 60, 0.5);
+                        padding: 15px;
+                        border-radius: 10px;
+                        border: 1px solid #4488ff;
+                    ">
+                        <div style="color: #888; text-align: center;">Загрузка...</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px;">🌍 ОБЩИЕ СТАНЦИИ</h2>
+                    <div id="shared-stations-list" style="
+                        max-height: 200px;
+                        overflow-y: auto;
+                        background: rgba(0, 30, 60, 0.5);
+                        padding: 15px;
+                        border-radius: 10px;
+                        border: 1px solid #4488ff;
+                    ">
+                        <div style="color: #888; text-align: center;">Загрузка...</div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #44aaff;">
+                    <button id="close-station-select-btn" style="
+                        padding: 15px 40px;
+                        background: #666;
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-family: 'Courier New', monospace;
+                        font-size: 16px;
+                    ">✕ ОТМЕНА</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(stationEl);
+
+        // Загрузка списка станций
+        setTimeout(async () => {
+            await this.loadStationLists();
+        }, 100);
+
+        // Закрытие
+        setTimeout(() => {
+            const closeBtn = document.getElementById('close-station-select-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    stationEl.remove();
+                });
+            }
+        }, 0);
+
+        // Закрытие по ESC
+        const escHandler = (e: KeyboardEvent) => {
+            if (e.code === 'Escape') {
+                stationEl.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // Загрузка списков станций
+    private async loadStationLists() {
+        try {
+            // Загружаем личные станции
+            const personalResponse = await fetch('/api/stations');
+            const personalStations = await personalResponse.json();
+            
+            const personalList = document.getElementById('personal-stations-list');
+            if (personalList) {
+                if (personalStations.length === 0) {
+                    personalList.innerHTML = '<div style="color: #888; text-align: center;">Нет личных станций</div>';
+                } else {
+                    personalList.innerHTML = personalStations.map((s: any) => `
+                        <div style="
+                            padding: 10px;
+                            margin: 5px 0;
+                            background: rgba(68, 136, 255, 0.3);
+                            border: 1px solid #4488ff;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        " onmouseover="this.style.background='rgba(68, 136, 255, 0.5)'" onmouseout="this.style.background='rgba(68, 136, 255, 0.3)'">
+                            <span>🏪 ${s.name}</span>
+                            <button class="place-station-btn" data-name="${s.name}" style="
+                                padding: 5px 15px;
+                                background: #44aa66;
+                                color: white;
+                                border: none;
+                                border-radius: 5px;
+                                cursor: pointer;
+                                font-weight: bold;
+                            ">Установить</button>
+                        </div>
+                    `).join('');
+                    
+                    // Вешаем обработчики на кнопки
+                    document.querySelectorAll('.place-station-btn').forEach(btn => {
+                        btn.addEventListener('click', (e: any) => {
+                            const stationName = e.target.dataset.name;
+                            this.placeStationFromMenu(stationName);
+                        });
+                    });
+                }
+            }
+            
+            // Загружаем общие станции (заглушка - пока те же личные)
+            const sharedList = document.getElementById('shared-stations-list');
+            if (sharedList) {
+                // Пока показываем те же станции как общие
+                if (personalStations.length === 0) {
+                    sharedList.innerHTML = '<div style="color: #888; text-align: center;">Нет общих станций</div>';
+                } else {
+                    sharedList.innerHTML = personalStations.map((s: any) => `
+                        <div style="
+                            padding: 10px;
+                            margin: 5px 0;
+                            background: rgba(68, 170, 255, 0.3);
+                            border: 1px solid #44aaff;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        " onmouseover="this.style.background='rgba(68, 170, 255, 0.5)'" onmouseout="this.style.background='rgba(68, 170, 255, 0.3)'">
+                            <span>🌍 ${s.name} (Общая)</span>
+                            <button class="place-shared-station-btn" data-name="${s.name}" style="
+                                padding: 5px 15px;
+                                background: #44aaff;
+                                color: white;
+                                border: none;
+                                border-radius: 5px;
+                                cursor: pointer;
+                                font-weight: bold;
+                            ">Установить</button>
+                        </div>
+                    `).join('');
+                    
+                    // Вешаем обработчики на кнопки
+                    document.querySelectorAll('.place-shared-station-btn').forEach(btn => {
+                        btn.addEventListener('click', (e: any) => {
+                            const stationName = e.target.dataset.name;
+                            this.placeStationFromMenu(stationName, true);
+                        });
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Ошибка загрузки станций:', err);
+            const personalList = document.getElementById('personal-stations-list');
+            const sharedList = document.getElementById('shared-stations-list');
+            if (personalList) personalList.innerHTML = '<div style="color: #ff4444;">Ошибка загрузки</div>';
+            if (sharedList) sharedList.innerHTML = '<div style="color: #ff4444;">Ошибка загрузки</div>';
+        }
+    }
+
+    // Размещение станции из меню
+    private async placeStationFromMenu(stationName: string, isShared: boolean = false) {
+        console.log(`🏪 Размещение станции: ${stationName} (${isShared ? 'Общая' : 'Личная'})`);
+        
+        // Включаем режим размещения через StationManager
+        const stationManager = (this as any).stationManager;
+        if (stationManager) {
+            const filename = `${stationName}.blueprint.json`;
+            const success = await stationManager.enablePlacementMode(filename, (success: boolean) => {
+                if (success) {
+                    console.log(`✅ Станция "${stationName}" размещена!`);
+                } else {
+                    console.log(`❌ Размещение станции "${stationName}" отменено`);
+                }
+            });
+        }
+    }
+
+    // Показ меню выбора корабля (заглушка)
+    private showShipSelectionMenu() {
+        const shipEl = document.createElement('div');
+        shipEl.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10002;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        shipEl.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
+                border: 3px solid #4488ff;
+                border-radius: 20px;
+                padding: 30px;
+                color: #fff;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                min-width: 500px;
+                box-shadow: 0 0 50px rgba(68, 136, 255, 0.5);
+            ">
+                <h1 style="color: #4488ff; font-size: 28px; margin-bottom: 20px; text-align: center;">🚀 ВЫБОР КОРАБЛЯ</h1>
+                <div style="text-align: center; color: #888; margin: 30px 0;">
+                    ⚠️ Выбор корабля в разработке<br><br>
+                    💡 Доступен только корабль "Pioneer"
+                </div>
+                <div style="text-align: center;">
+                    <button id="close-ship-select-btn" style="
+                        padding: 15px 40px;
+                        background: #666;
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-family: 'Courier New', monospace;
+                        font-size: 16px;
+                    ">✕ ОТМЕНА</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(shipEl);
+
+        setTimeout(() => {
+            const closeBtn = document.getElementById('close-ship-select-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    shipEl.remove();
+                });
+            }
+        }, 0);
+
+        const escHandler = (e: KeyboardEvent) => {
+            if (e.code === 'Escape') {
+                shipEl.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
     // Показ пауза меню
     private showPauseMenu() {
         const totalResources = this.cargo.metal + this.cargo.silicon + this.cargo.ice + this.cargo.rare;
@@ -1384,12 +1684,12 @@ export class ShipController {
             }
             if (shipBtn) {
                 shipBtn.addEventListener('click', () => {
-                    alert('🚀 Выбор корабля: В разработке');
+                    this.showShipSelectionMenu();
                 });
             }
             if (stationBtn) {
                 stationBtn.addEventListener('click', () => {
-                    alert('🏪 Выбор станции: В разработке');
+                    this.showStationSelectionMenu();
                 });
             }
         }, 0);

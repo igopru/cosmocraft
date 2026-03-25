@@ -174,6 +174,8 @@ export class VoxelStar {
     }
     
     public getMesh(): THREE.Group {
+        // Устанавливаем имя для группы звезды
+        this.group.name = 'star';
         return this.group;
     }
     

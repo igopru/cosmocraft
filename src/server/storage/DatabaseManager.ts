@@ -157,9 +157,75 @@ export class DatabaseManager {
   }
   
   /**
+   * Получить соединение
+   */
+  async getConnection() {
+    return await this.pool.getConnection();
+  }
+
+  /**
    * Закрыть соединение
    */
   async close() {
     await this.pool.end();
+  }
+
+  /**
+   * Выполнить SQL запрос (для общего доступа)
+   */
+  async execute(query: string, values?: any[]) {
+    return await this.pool.execute(query, values);
+  }
+
+  /**
+   * Инициализировать ресурсы нового игрока
+   */
+  async initializePlayerResources(playerId: string) {
+    const resources = [
+      { type: 'metal', amount: 1000 },
+      { type: 'silicon', amount: 500 },
+      { type: 'ice', amount: 300 },
+      { type: 'rare', amount: 100 }
+    ];
+
+    for (const resource of resources) {
+      await this.pool.execute(
+        `INSERT INTO player_resources (player_id, resource_type, amount)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
+        [playerId, resource.type, resource.amount]
+      );
+    }
+  }
+
+  /**
+   * Получить ресурсы игрока
+   */
+  async getPlayerResources(playerId: string) {
+    const [rows] = await this.pool.execute(
+      `SELECT resource_type, amount FROM player_resources WHERE player_id = ?`,
+      [playerId]
+    );
+
+    const resources: Record<string, number> = {};
+    (rows as any[]).forEach(row => {
+      resources[row.resource_type] = row.amount;
+    });
+
+    return resources;
+  }
+
+  /**
+   * Обновить ресурсы игрока
+   */
+  async updatePlayerResources(playerId: string, resources: Record<string, number>) {
+    for (const [type, amount] of Object.entries(resources)) {
+      await this.pool.execute(
+        `INSERT INTO player_resources (player_id, resource_type, amount)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
+        [playerId, type, amount]
+      );
+    }
   }
 }
