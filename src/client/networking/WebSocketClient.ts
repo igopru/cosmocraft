@@ -18,11 +18,13 @@ export class WebSocketClient {
     
     this.ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      console.log('📨 Received:', message.type);
-      
+      console.log('📨 Received:', message.type, message.data ? `(${Array.isArray(message.data) ? message.data.length : 'object'})` : '');
+
       const handler = this.messageHandlers.get(message.type);
       if (handler) {
         handler(message.data);
+      } else {
+        console.warn('⚠️ No handler for message type:', message.type);
       }
     };
     
@@ -42,9 +44,10 @@ export class WebSocketClient {
   
   send(type: string, data: any) {
     if (this.connected) {
+      console.log('📤 Sending:', type, data);
       this.ws.send(JSON.stringify({ type, data }));
     } else {
-      console.warn('⚠️ Not connected to server');
+      console.warn('⚠️ Not connected to server, message not sent:', type);
     }
   }
   

@@ -39,6 +39,9 @@ export class CosmoCraftGame {
     private stationShop: StationShop;
     private globalKeyDownHandler: ((e: KeyboardEvent) => void) | null = null;
     private cameraMode: 'follow' | 'orbit' = 'follow'; // follow = корабль, orbit = свободная камера
+    private renderDistance: number = 3000; // Дальность прорисовки астероидов
+    private visibleAsteroids: Map<string, THREE.Group> = new Map(); // Видимые астероиды
+    private allAsteroidsData: any[] = []; // Все данные астероидов от сервера
 
     constructor() {
         console.log('CosmoCraftGame constructor');
@@ -57,7 +60,37 @@ export class CosmoCraftGame {
         this.controls.enableDamping = true;
         this.controls.enabled = false; // Отключаем сразу для POV режима
 
-        this.wsClient = new WebSocketClient('ws://localhost:8080');
+        // Определяем адрес WebSocket сервера
+        const urlParams = new URLSearchParams(window.location.search);
+        const serverHost = urlParams.get('server') || window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        
+        // Определяем порт и путь
+        let wsPort = urlParams.get('ws_port');
+        let wsPath = urlParams.get('ws_path') || '';
+        
+        // Если не указан порт явно, определяем автоматически
+        if (!wsPort) {
+            if (wsPath) {
+                // Если есть ws_path, значит через nginx - порт не нужен (443 или 80)
+                wsPort = '';
+            } else if (window.location.protocol === 'https:') {
+                // HTTPS без ws_path - используем 443
+                wsPort = '';
+            } else {
+                // HTTP без ws_path - локальная разработка, порт 8080
+                wsPort = '8080';
+            }
+        }
+        
+        // Формируем URL
+        const portPart = wsPort ? `:${wsPort}` : '';
+        const wsUrl = `${protocol}//${serverHost}${portPart}${wsPath}`;
+
+        console.log('🔌 WebSocket URL:', wsUrl);
+        console.log('📋 Params:', { serverHost, protocol, wsPort, wsPath });
+        
+        this.wsClient = new WebSocketClient(wsUrl);
         this.hud = new HUD();
         this.buildMenu = new BuildMenu(this.wsClient, this);
         this.playerName = localStorage.getItem('playerName') || 'Gora';
@@ -103,15 +136,15 @@ export class CosmoCraftGame {
         console.log('🌍 Текущий мир:', data.world);
         this.hud.showMessage(`Мир #${data.world.world_number}: ${data.world.name}`);
       });
-  
+
       this.wsClient.on('worldInfo', (data) => {
         console.log('📊 Информация о мире:', data);
         this.hud.updateWorldInfo(data.currentWorld, data.playerLegacy);
       });
-  
+
       this.wsClient.on('asteroidsData', (data) => {
         console.log('☄️ Получено астероидов:', data.length);
-        // Здесь будем отрисовывать астероиды
+        this.renderAsteroids(data);
       });
     }
     
@@ -173,6 +206,12 @@ export class CosmoCraftGame {
     
     private requestAsteroids() {
         console.log('🔄 Запрашиваем астероиды...');
+        
+        // Получаем renderDistance из URL параметра или используем значение по умолчанию
+        const urlParams = new URLSearchParams(window.location.search);
+        this.renderDistance = parseInt(urlParams.get('renderDistance') || '3000');
+        console.log('👁️ Дальность прорисовки:', this.renderDistance);
+        
         // Запрашиваем сразу при старте
         if (this.wsClient) {
             this.wsClient.send('getAsteroids', {
@@ -181,7 +220,7 @@ export class CosmoCraftGame {
                     y: this.camera.position.y,
                     z: this.camera.position.z
                 },
-                radius: 3000
+                radius: this.renderDistance
             });
         }
         // Затем запрашиваем каждые 5 секунд
@@ -193,7 +232,7 @@ export class CosmoCraftGame {
                         y: this.camera.position.y,
                         z: this.camera.position.z
                     },
-                    radius: 3000
+                    radius: this.renderDistance
                 });
             }
         }, 5000);
@@ -238,17 +277,15 @@ export class CosmoCraftGame {
         // Обновляем звезду (анимация ядра, короны, частиц)
         this.star.update(0.016);
 
-        // Обновляем астероиды (вращение каждого астероида)
-        if (this.asteroids) {
-            this.asteroids.forEach(asteroid => {
-                const speed = (asteroid as any).userData?.rotationSpeed;
-                if (speed) {
-                    asteroid.rotation.x += speed.x;
-                    asteroid.rotation.y += speed.y;
-                    asteroid.rotation.z += speed.z;
-                }
-            });
-        }
+        // Обновляем астероиды (вращение только видимых)
+        this.visibleAsteroids.forEach(asteroid => {
+            const speed = (asteroid as any).userData?.rotationSpeed;
+            if (speed) {
+                asteroid.rotation.x += speed.x;
+                asteroid.rotation.y += speed.y;
+                asteroid.rotation.z += speed.z;
+            }
+        });
 
         // Обновляем контроллер корабля (управление, физика)
         this.shipController.update(delta);
@@ -273,102 +310,144 @@ export class CosmoCraftGame {
 
     private renderAsteroids(asteroidsData: any[]) {
         console.log('🎨 Отрисовка астероидов:', asteroidsData.length);
-    
-        // Очищаем старые астероиды
-        if (this.asteroids) {
-            this.asteroids.forEach(a => this.scene.remove(a));
-        }
-    
-        this.asteroids = [];
-    
-        asteroidsData.forEach(data => {
-            // Создаем группу для воксельного астероида
-            const group = new THREE.Group();
         
-            // Определяем цвет на основе типа
-            let baseColor: number;
-            let emissiveColor: number;
+        // Сохраняем все данные астероидов
+        this.allAsteroidsData = asteroidsData;
         
-            switch(data.type) {
-                case 'silicon':
-                    baseColor = 0x66aaff;
-                    emissiveColor = 0x113366;
-                    break;
-                case 'icy':
-                    baseColor = 0xaaddff;
-                    emissiveColor = 0x224466;
-                    break;
-                case 'rare':
-                    baseColor = 0xffaa44;
-                    emissiveColor = 0x442200;
-                    break;
-                default: // metallic
-                    baseColor = 0x888888;
-                    emissiveColor = 0x222222;
+        // Обновляем видимые астероиды
+        this.updateVisibleAsteroids();
+        
+        console.log(`✅ Отрисовано астероидов: ${this.visibleAsteroids.size} из ${asteroidsData.length}`);
+    }
+
+    /**
+     * Обновляет только видимые астероиды в радиусе renderDistance
+     */
+    private updateVisibleAsteroids() {
+        const cameraPos = this.camera.position;
+        const toRemove: string[] = [];
+
+        // Проверяем текущие видимые астероиды - удаляем те, что вышли за радиус
+        this.visibleAsteroids.forEach((asteroid, id) => {
+            const data = this.allAsteroidsData.find(a => a.id === id);
+            if (!data) {
+                // Астероид больше не существует
+                this.scene.remove(asteroid);
+                toRemove.push(id);
+                return;
             }
-        
-            // Генерируем воксели
-            const voxelSize = 5;
-            const size = 25; // размер астероида
-        
-            for (let x = -size; x < size; x += voxelSize) {
-                for (let y = -size; y < size; y += voxelSize) {
-                    for (let z = -size; z < size; z += voxelSize) {
-                        // Проверяем, находится ли воксель внутри сферы
-                        const dist = Math.sqrt(x*x + y*y + z*z);
-                        if (dist < size - voxelSize && Math.random() > 0.5) {
-                            // Размер вокселя зависит от расстояния до центра
-                            const voxelScale = 0.8 + Math.random() * 1.2;
-                        
-                            const voxelGeo = new THREE.BoxGeometry(voxelSize * voxelScale, voxelSize * voxelScale, voxelSize * voxelScale);
-                            const voxelMat = new THREE.MeshStandardMaterial({
-                                color: baseColor,
-                                emissive: emissiveColor,
-                                emissiveIntensity: data.type === 'rare' ? 0.3 : 0.1,
-                                roughness: 0.6,
-                                metalness: data.type === 'metallic' ? 0.7 : 0.2
-                            });
-                        
-                            const voxel = new THREE.Mesh(voxelGeo, voxelMat);
-                            voxel.position.set(x, y, z);
-                            voxel.castShadow = true;
-                            voxel.receiveShadow = true;
-                        
-                            // Добавляем случайное смещение для более естественного вида
-                            voxel.position.x += (Math.random() - 0.5) * 0.5;
-                            voxel.position.y += (Math.random() - 0.5) * 0.5;
-                            voxel.position.z += (Math.random() - 0.5) * 0.5;
-                        
-                            group.add(voxel);
-                        }
+
+            const distance = cameraPos.distanceTo(new THREE.Vector3(data.position_x, data.position_y, data.position_z));
+            if (distance > this.renderDistance) {
+                // Вышел за радиус прорисовки
+                this.scene.remove(asteroid);
+                toRemove.push(id);
+            }
+        });
+
+        // Удаляем из мапы
+        toRemove.forEach(id => this.visibleAsteroids.delete(id));
+
+        // Добавляем новые видимые астероиды
+        this.allAsteroidsData.forEach(data => {
+            if (this.visibleAsteroids.has(data.id)) return; // Уже отрисован
+
+            const distance = cameraPos.distanceTo(new THREE.Vector3(data.position_x, data.position_y, data.position_z));
+            if (distance <= this.renderDistance) {
+                // В радиусе прорисовки - создаем меш
+                const asteroid = this.createAsteroidMesh(data);
+                this.scene.add(asteroid);
+                this.visibleAsteroids.set(data.id, asteroid);
+            }
+        });
+    }
+
+    /**
+     * Создает меш астероида из данных
+     */
+    private createAsteroidMesh(data: any): THREE.Group {
+        const group = new THREE.Group();
+
+        // Определяем цвет на основе типа
+        let baseColor: number;
+        let emissiveColor: number;
+
+        switch(data.type) {
+            case 'silicon':
+                baseColor = 0x66aaff;
+                emissiveColor = 0x113366;
+                break;
+            case 'icy':
+                baseColor = 0xaaddff;
+                emissiveColor = 0x224466;
+                break;
+            case 'rare':
+                baseColor = 0xffaa44;
+                emissiveColor = 0x442200;
+                break;
+            default: // metallic
+                baseColor = 0x888888;
+                emissiveColor = 0x222222;
+        }
+
+        // Генерируем воксели - упрощенная версия для дальних астероидов
+        const voxelSize = 5;
+        const size = 25; // размер астероида
+
+        // Для оптимизации: меньше вокселей для дальних астероидов
+        const cameraDistance = this.camera.position.distanceTo(
+            new THREE.Vector3(data.position_x, data.position_y, data.position_z)
+        );
+        const detailFactor = Math.max(0.3, 1 - cameraDistance / (this.renderDistance * 1.5));
+
+        for (let x = -size; x < size; x += voxelSize) {
+            for (let y = -size; y < size; y += voxelSize) {
+                for (let z = -size; z < size; z += voxelSize) {
+                    const dist = Math.sqrt(x*x + y*y + z*z);
+                    // Меньше вокселей для дальних астероидов
+                    if (dist < size - voxelSize && Math.random() > (0.5 * detailFactor)) {
+                        const voxelScale = 0.8 + Math.random() * 1.2;
+
+                        const voxelGeo = new THREE.BoxGeometry(voxelSize * voxelScale, voxelSize * voxelScale, voxelSize * voxelScale);
+                        const voxelMat = new THREE.MeshStandardMaterial({
+                            color: baseColor,
+                            emissive: emissiveColor,
+                            emissiveIntensity: data.type === 'rare' ? 0.3 : 0.1,
+                            roughness: 0.6,
+                            metalness: data.type === 'metallic' ? 0.7 : 0.2
+                        });
+
+                        const voxel = new THREE.Mesh(voxelGeo, voxelMat);
+                        voxel.position.set(x, y, z);
+                        voxel.castShadow = true;
+                        voxel.receiveShadow = true;
+
+                        voxel.position.x += (Math.random() - 0.5) * 0.5;
+                        voxel.position.y += (Math.random() - 0.5) * 0.5;
+                        voxel.position.z += (Math.random() - 0.5) * 0.5;
+
+                        group.add(voxel);
                     }
                 }
             }
-        
-            // Позиционируем астероид
-            group.position.set(data.position_x, data.position_y, data.position_z);
-        
-            // Случайное вращение
-            group.rotation.x = Math.random() * Math.PI * 2;
-            group.rotation.y = Math.random() * Math.PI * 2;
-            group.rotation.z = Math.random() * Math.PI * 2;
-        
-            // Сохраняем скорость вращения для анимации
-            (group as any).userData = {
-                id: data.id,
-                type: data.type,
-                rotationSpeed: {
-                    x: (Math.random() - 0.5) * 0.005,
-                    y: (Math.random() - 0.5) * 0.005,
-                    z: (Math.random() - 0.5) * 0.005
-                }
-            };
-    
-            this.scene.add(group);
-            this.asteroids.push(group);
-        });
+        }
 
-        console.log(`✅ Отрисовано астероидов: ${this.asteroids.length}`);
+        group.position.set(data.position_x, data.position_y, data.position_z);
+        group.rotation.x = Math.random() * Math.PI * 2;
+        group.rotation.y = Math.random() * Math.PI * 2;
+        group.rotation.z = Math.random() * Math.PI * 2;
+
+        (group as any).userData = {
+            id: data.id,
+            type: data.type,
+            rotationSpeed: {
+                x: (Math.random() - 0.5) * 0.005,
+                y: (Math.random() - 0.5) * 0.005,
+                z: (Math.random() - 0.5) * 0.005
+            }
+        };
+
+        return group;
     }
 
     // Публичные методы для управления станциями

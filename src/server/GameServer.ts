@@ -5,15 +5,18 @@ import { DatabaseManager } from './storage/DatabaseManager';
 import { LotkaVolterraGenerator } from '../world/LotkaVolterraGenerator';
 import { PlayerManager } from './utils/PlayerManager';
 import { initAdminRoutes } from './routes/admin.routes';
+import { router as authRouter } from './routes/auth.routes';
 import * as crypto from 'crypto';
 import express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const publicPath = path.join(__dirname, '../../public');
-const sharedStationPath = path.join(__dirname, '../../stations/shared');
-const playerBasePath = path.join(__dirname, '../../players');
-const adminPath = path.join(__dirname, '../../public/admin');
+// Используем process.cwd() для корректной работы при запуске через ts-node
+const baseDir = process.cwd();
+const publicPath = path.join(baseDir, 'public');
+const sharedStationPath = path.join(baseDir, 'stations', 'shared');
+const playerBasePath = path.join(baseDir, 'players');
+const adminPath = path.join(baseDir, 'public', 'admin');
 
 export class GameServer {
   private wss: WebSocketServer;
@@ -30,7 +33,10 @@ export class GameServer {
     this.db = new DatabaseManager();
     this.playerManager = new PlayerManager(this.db, playerBasePath);
     this.worldGenerator = new LotkaVolterraGenerator(dbConfig);
-    this.wss = new WebSocketServer({ port: serverConfig.port });
+    // Запускаем WebSocket сервер на всех интерфейсах (0.0.0.0)
+    this.wss = new WebSocketServer({ port: serverConfig.port, host: '0.0.0.0' });
+
+    console.log('🔌 WebSocket server created on port', serverConfig.port);
 
     // Настраиваем Express
     this.app = express();
@@ -46,10 +52,20 @@ export class GameServer {
     this.startServer();
 
     // Инициализируем мир
-    this.initialize();
-
-    // Настраиваем WebSocket
-    this.setupWebSocket();
+    console.log('🌍 Инициализация мира...');
+    this.initialize().then(() => {
+      console.log('✅ Мир инициализирован');
+      // Настраиваем WebSocket
+      this.setupWebSocket();
+      console.log('🔌 WebSocket handlers setup complete');
+      
+      // Удерживаем процесс активным
+      setInterval(() => {}, 60000);
+      console.log('⏰ Process keep-alive interval started');
+    }).catch(err => {
+      console.error('❌ Ошибка инициализации мира:', err);
+      process.exit(1);
+    });
 
     console.log('🚀 Game server started on port 8080');
   }
@@ -386,6 +402,10 @@ export class GameServer {
     const adminRoutes = initAdminRoutes(this.db, jwtSecret);
     this.app.use('/api/admin', adminRoutes);
 
+    // Маршруты авторизации (регистрация, вход, восстановление пароля)
+    this.app.use('/api/auth', authRouter);
+    this.db; // Сохраняем экземпляр БД для доступа из auth routes
+
     // Статические файлы админ-панели
     this.app.use('/admin', express.static(adminPath));
 
@@ -401,13 +421,22 @@ export class GameServer {
     console.log('   - DELETE /api/stations/:name');
     console.log('   - POST /api/player/login');
     console.log('   - GET  /api/player/:playerIndex/info');
+    console.log('   - POST /api/auth/register     (Регистрация)');
+    console.log('   - POST /api/auth/login        (Вход)');
+    console.log('   - POST /api/auth/logout       (Выход)');
+    console.log('   - POST /api/auth/refresh      (Обновление токена)');
+    console.log('   - POST /api/auth/forgot-password');
+    console.log('   - POST /api/auth/reset-password');
+    console.log('   - POST /api/auth/verify-email');
+    console.log('   - GET  /api/auth/me');
     console.log('   - POST /api/admin/login');
     console.log('   - GET  /api/admin/* (Admin API)');
     console.log('   - GET  /admin (Admin Panel UI)');
   }
 
   private startServer() {
-    this.app.listen(serverConfig.clientPort, () => {
+    // Запускаем Express на всех интерфейсах (0.0.0.0)
+    this.app.listen(serverConfig.clientPort, '0.0.0.0', () => {
       console.log(`📁 Static server started on port ${serverConfig.clientPort}`);
       console.log(`📁 Serving files from: ${publicPath}`);
       console.log(`📁 Station path: ${sharedStationPath}`);
@@ -485,12 +514,18 @@ export class GameServer {
   private async handleGetAsteroids(clientId: string, data: any) {
     const { position, radius = 500 } = data;
 
+    // Проверяем, что позиция корректна
+    if (!position || position.x === undefined || position.y === undefined || position.z === undefined) {
+      console.warn(`⚠️ Некорректная позиция от клиента ${clientId}:`, position);
+      return;
+    }
+
     const asteroids = await this.db.getAsteroidsInRange(
       position.x, position.y, position.z, radius
     );
 
     const asteroidsArray = asteroids as any[];
-    console.log(`☄️ Отправлено ${asteroidsArray.length} астероидов клиенту ${clientId}`);
+    console.log(`☄️ Отправлено ${asteroidsArray.length} астероидов клиенту ${clientId} (радиус: ${radius})`);
 
     this.clients.get(clientId)?.send(JSON.stringify({
       type: 'asteroidsData',
@@ -568,4 +603,33 @@ export class GameServer {
 }
 
 // Запускаем сервер
-new GameServer();
+console.log('🚀 Creating GameServer instance...');
+try {
+  const server = new GameServer();
+  console.log('✅ GameServer instance created');
+  
+  // Обработка завершения процесса
+  process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, shutting down...');
+    process.exit(0);
+  });
+  
+  process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, shutting down...');
+    process.exit(0);
+  });
+  
+  process.on('exit', (code) => {
+    console.log(`🛑 Process exiting with code ${code}`);
+  });
+  
+  // Удерживаем процесс активным
+  const keepAlive = setInterval(() => {
+    console.log('⏰ Keep-alive tick');
+  }, 10000);
+  
+  console.log('⏰ Keep-alive interval started');
+} catch (error) {
+  console.error('❌ Error creating GameServer:', error);
+  process.exit(1);
+}

@@ -101,65 +101,73 @@ export class AuthService {
 
       // Создание игрока
       const playerId = crypto.randomUUID();
-      
-      const connection = await this.db.getConnection();
-      try {
-        await connection.beginTransaction();
 
-        // Создаём игрока
-        await connection.execute(
-          `INSERT INTO players (id, username, position_x, position_y, position_z)
-           VALUES (?, ?, 0, 500, 0)`,
-          [playerId, username]
-        );
+      // Создаём игрока (без транзакции для избежания блокировок)
+      await this.db.execute(
+        `INSERT INTO players (id, username, position_x, position_y, position_z)
+         VALUES (?, ?, 0, 500, 0)`,
+        [playerId, username]
+      );
 
-        // Создаём учётные данные
-        await connection.execute(
-          `INSERT INTO pilot_credentials 
-           (player_id, email, password_hash, password_salt, is_email_verified)
-           VALUES (?, ?, ?, ?, FALSE)`,
-          [playerId, email, passwordHash, salt]
-        );
+      // Создаём учётные данные
+      await this.db.execute(
+        `INSERT INTO pilot_credentials
+         (player_id, email, password_hash, password_salt, is_email_verified)
+         VALUES (?, ?, ?, ?, FALSE)`,
+        [playerId, email, passwordHash, salt]
+      );
 
-        // Инициализируем ресурсы
-        await this.db.initializePlayerResources(playerId);
+      // Инициализируем ресурсы (отдельным запросом)
+      await this.initializePlayerResourcesSimple(playerId);
 
-        // Генерируем код подтверждения email
-        const verificationCode = await this.createVerificationCode(
-          playerId,
-          email,
-          'verify_email'
-        );
+      // Генерируем код подтверждения email
+      const verificationCode = await this.createVerificationCode(
+        playerId,
+        email,
+        'verify_email'
+      );
 
-        // Отправляем email
-        await this.emailService.sendVerificationEmail(
-          email,
-          username,
-          verificationCode.code
-        );
+      // Отправляем email
+      await this.emailService.sendVerificationEmail(
+        email,
+        username,
+        verificationCode.code
+      );
 
-        await connection.commit();
+      // Логируем событие
+      await this.logSecurityEvent(
+        playerId,
+        'email_verification_requested',
+        ipAddress,
+        { email }
+      );
 
-        // Логируем событие
-        await this.logSecurityEvent(
-          playerId,
-          'email_verification_requested',
-          ipAddress,
-          { email }
-        );
-
-        return { success: true, playerId };
-
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      } finally {
-        connection.release();
-      }
+      return { success: true, playerId };
 
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Инициализация ресурсов игрока (упрощённая версия без транзакций)
+   */
+  private async initializePlayerResourcesSimple(playerId: string): Promise<void> {
+    const resources = [
+      { type: 'metal', amount: 1000 },
+      { type: 'silicon', amount: 500 },
+      { type: 'ice', amount: 300 },
+      { type: 'rare', amount: 100 }
+    ];
+
+    for (const resource of resources) {
+      await this.db.execute(
+        `INSERT INTO player_resources (player_id, resource_type, amount)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
+        [playerId, resource.type, resource.amount]
+      );
     }
   }
 

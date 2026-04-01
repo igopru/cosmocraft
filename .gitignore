@@ -23,7 +23,35 @@ backups/
 worlds/*.json
 !worlds/cosmos1/README.md
 
+# ============================================================
+# БЕЗОПАСНОСТЬ - Исключено из репозитория
+# ============================================================
+# Файлы авторизации и безопасности не распространяются
+# Каждый разработчик настраивает самостоятельно
+# См. SECURITY_NOTICE.md для подробностей
+
+# Скрипты авторизации (содержат критическую логику безопасности)
+src/server/routes/auth.routes.ts
+src/server/services/AuthService.ts
+src/server/services/EmailService.ts
+
+# Схемы БД авторизации (содержат структуру таблиц безопасности)
+scripts/database/auth-schema.sql
+
+# Файлы конфигурации безопасности
+security.env
+security.*.env
+security.local
+
+# Публичные страницы авторизации (содержат логику форм)
+public/registration.html
+public/verification.html
+public/password-reset.html
+public/index.html
+
+# ============================================================
 # IDE и системные файлы
+# ============================================================
 .vscode/
 .idea/
 *.swp

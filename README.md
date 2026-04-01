@@ -21,6 +21,16 @@
 
 ---
 
+## 🔐 Важное уведомление о безопасности
+
+> **ВНИМАНИЕ:** Система авторизации (регистрация, вход, восстановление пароля) **исключена из репозитория** и не распространяется вместе с проектом.
+> 
+> Каждый разработчик обязан самостоятельно реализовать или настроить систему аутентификации.
+> 
+> Подробности см. в документе [SECURITY_NOTICE.md](./SECURITY_NOTICE.md)
+
+---
+
 ## 🚀 Быстрый старт
 
 ### Предварительные требования
@@ -95,6 +105,15 @@ cosmocraft/
 ├── scripts/                   # Вспомогательные скрипты
 │   └── database/              # SQL скрипты
 └── docs/                      # Документация
+
+⚠️ Файлы авторизации исключены из репозитория (см. SECURITY_NOTICE.md):
+    - src/server/routes/auth.routes.ts
+    - src/server/services/AuthService.ts
+    - src/server/services/EmailService.ts
+    - scripts/database/auth-schema.sql
+    - public/registration.html
+    - public/verification.html
+    - public/password-reset.html
 ```
 
 ---
@@ -141,6 +160,7 @@ npm run test-world   # Тест генерации мира
 
 | Файл | Описание |
 |------|----------|
+| [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) | 🔒 **ВАЖНО:** Ограничение распространения кода авторизации |
 | [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md) | 🔐 **Система авторизации**: JWT, bcrypt, email, IP whitelist |
 | [docs/SECURITY_GUIDE.md](./docs/SECURITY_GUIDE.md) | 🛡️ **Безопасность сервера**: firewall, HTTPS, fail2ban, бэкапы |
 | [docs/DATABASE.md](./docs/DATABASE.md) | 🗄️ База данных MySQL, схема, запросы |

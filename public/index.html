@@ -3,128 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CosmoCraft - Космическая стратегия</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>CosmoCraft - Вход</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        .container {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .form-container {
+            background-color: rgba(255, 255, 255, 0.02);
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            z-index: 10;
+        }
+        .form-container h1 {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #ffd700;
+            font-size: 32px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #888;
+        }
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.03);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: 2px solid #44aaff;
+            outline-offset: 2px;
+        }
+        input.error {
+            border: 1px solid #ff4444;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #111;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #222;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        .error-message {
+            color: #ff4444;
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .success-message {
+            color: #44ff88;
+            font-size: 14px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .link {
+            color: #44aaff;
+            text-decoration: none;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+        .links {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 13px;
+        }
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .stars canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #game-ui {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <!-- Меню логина -->
-    <div id="login-overlay">
-        <div class="login-box">
+    <div class="container">
+        <div class="form-container" id="loginFormContainer">
             <h1>CosmoCraft</h1>
-            <input type="text" id="player-name" placeholder="Введите имя игрока" value="Gora">
-            <button id="btn-login">Войти в игру</button>
-            <div id="login-status"></div>
+            <p class="subtitle">Космическая стратегия</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required placeholder="your.email@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" id="loginBtn">Войти</button>
+                <div id="loginMessage"></div>
+            </form>
+            <div class="links">
+                <a href="/registration.html" class="link">Нет аккаунта? Зарегистрироваться</a> | 
+                <a href="/password-reset.html" class="link">Забыли пароль?</a>
+            </div>
+            <div class="footer">© 2026 CosmoCraft</div>
+        </div>
+
+        <!-- Игровой интерфейс (скрыт по умолчанию) -->
+        <div id="game-ui">
+            <!-- Здесь будет игра -->
+        </div>
+
+        <div class="stars">
+            <canvas id="starfield"></canvas>
         </div>
     </div>
 
-    <!-- Игровой интерфейс -->
-    <div id="game-ui" style="display: none;">
-        <div id="info">
-            <div id="coordinates">X: 0 Y: 0 Z: 0</div>
-            <div id="sector">Сектор: Неизвестно</div>
-            <div id="temperature">Температура: 0K</div>
-            <div id="radiation">Радиация: 0 rad/s</div>
-            <div id="resources">
-                <div>Металл: <span id="metal">0</span></div>
-                <div>Кремний: <span id="silicon">0</span></div>
-                <div>Лед: <span id="ice">0</span></div>
-                <div>Редкие: <span id="rare">0</span></div>
-            </div>
-        </div>
+<script>
+    // Звёздное небо
+    const canvas = document.getElementById('starfield');
+    const ctx = canvas.getContext('2d');
 
-        <div id="warning" style="display: none;"></div>
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
-        <div id="build-menu"></div>
+    const stars = [];
+    const STAR_COUNT = 200;
 
-        <div id="mining-progress" style="display: none;">
-            <div class="progress-bar">
-                <div class="progress-fill" id="mining-fill"></div>
-            </div>
-            <div id="mining-status">Добыча...</div>
-        </div>
-
-        <!-- Меню станций -->
-        <div id="station-menu" style="display: none;">
-            <div id="station-list"></div>
-        </div>
-    </div>
-    
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
-            }
-        }
-    </script>
-    
-    <script type="module">
-        import { CosmoCraftGame } from '/dist/client/main.js';
-
-        // Определяем функцию login сразу
-        window.login = async function() {
-            console.log('Login function called');
-            const playerName = document.getElementById('player-name').value;
-            if (playerName) {
-                localStorage.setItem('playerName', playerName);
-
-                // Скрываем меню логина - ВАЖНО: display none
-                const loginOverlay = document.getElementById('login-overlay');
-                if (loginOverlay) {
-                    loginOverlay.style.display = 'none';
-                    console.log('Login overlay hidden');
-                } else {
-                    console.error('Login overlay not found!');
-                }
-
-                // Показываем игровой интерфейс
-                const gameUI = document.getElementById('game-ui');
-                if (gameUI) {
-                    gameUI.style.display = 'block';
-                    console.log('Game UI shown');
-                } else {
-                    console.error('Game UI not found!');
-                }
-
-                // Создаем и запускаем игру (async)
-                if (!window.game) {
-                    window.game = new CosmoCraftGame();
-                    await window.game.start();
-                }
-            } else {
-                console.error('Player name is empty!');
-            }
-        };
-
-        // Навешиваем обработчик после загрузки DOM
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOMContentLoaded fired');
-            console.log('window.login exists:', typeof window.login === 'function');
-            
-            const btnLogin = document.getElementById('btn-login');
-            console.log('btn-login element:', btnLogin);
-            
-            if (btnLogin) {
-                btnLogin.addEventListener('click', () => {
-                    console.log('Login button clicked');
-                    console.log('window.login type:', typeof window.login);
-                    window.login();
-                });
-            } else {
-                console.error('btn-login not found!');
-            }
-
-            // Также позволяем нажать Enter в поле ввода
-            const playerNameInput = document.getElementById('player-name');
-            if (playerNameInput) {
-                playerNameInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        window.login();
-                    }
-                });
-                console.log('player-name input:', playerNameInput.value);
-            }
+    for (let i = 0; i < STAR_COUNT; i++) {
+        stars.push({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            size: Math.random() > 0.9 ? 2 : 1
         });
-    </script>
+    }
+
+    function drawStars() {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        for (const star of stars) {
+            ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.size, star.size);
+        }
+    }
+    drawStars();
+
+    // Логика входа
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginMessage = document.getElementById('loginMessage');
+    const loginFormContainer = document.getElementById('loginFormContainer');
+    const gameUI = document.getElementById('game-ui');
+
+    // Проверка сохранённой сессии
+    const savedToken = localStorage.getItem('accessToken');
+    if (savedToken) {
+        validateSavedToken();
+    }
+
+    async function validateSavedToken() {
+        try {
+            const response = await fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${savedToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Токен валиден, показываем игру
+                    showGameUI(data.player.username);
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка проверки токена:', error);
+        }
+    }
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Вход...';
+        loginMessage.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Сохраняем токены
+                localStorage.setItem('accessToken', data.tokens.accessToken);
+                localStorage.setItem('refreshToken', data.tokens.refreshToken);
+
+                loginMessage.innerHTML = '<div class="success-message">✅ Вход успешен! Переход в игру...</div>';
+
+                // Получаем информацию о игроке
+                setTimeout(async () => {
+                    try {
+                        const meResponse = await fetch('/api/auth/me', {
+                            headers: {
+                                'Authorization': `Bearer ${data.tokens.accessToken}`
+                            }
+                        });
+
+                        if (meResponse.ok) {
+                            const meData = await meResponse.json();
+                            if (meData.success) {
+                                showGameUI(meData.player.username);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Ошибка получения информации:', error);
+                        showGameUI('Pilot');
+                    }
+                }, 500);
+            } else {
+                let message = data.error || 'Ошибка входа';
+
+                if (data.requiresEmailVerification) {
+                    message = `⚠️ ${message}. <a href="/verification.html?email=${encodeURIComponent(email)}" class="link">Подтвердить email</a>`;
+                }
+
+                loginMessage.innerHTML = `<div class="error-message" style="display:block">${message}</div>`;
+            }
+        } catch (error) {
+            loginMessage.innerHTML = '<div class="error-message" style="display:block">Ошибка соединения с сервером</div>';
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Войти';
+        }
+    });
+
+    function showGameUI(username) {
+        loginFormContainer.style.display = 'none';
+        gameUI.style.display = 'block';
+        document.title = `CosmoCraft - ${username}`;
+
+        // Здесь можно инициализировать игру
+        console.log('Game UI shown for:', username);
+
+        // Если игра уже импортирована, запускаем её
+        if (window.game && typeof window.game.start === 'function') {
+            window.game.start();
+        }
+    }
+</script>
+
+<!-- Подключаем игру -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        }
+    }
+</script>
+
+<script type="module">
+    import { CosmoCraftGame } from '/dist/client/main.js';
+
+    window.game = new CosmoCraftGame();
+</script>
+
 </body>
 </html>

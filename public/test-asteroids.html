@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Asteroids WebSocket</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        #log { white-space: pre-wrap; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; }
+        input { padding: 8px; font-size: 16px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>🔌 Тест WebSocket - Астероиды</h1>
+    
+    <div>
+        <input type="text" id="playerName" value="TestPlayer" placeholder="Имя игрока">
+        <button onclick="connect()">Подключиться</button>
+        <button onclick="getAsteroids()">Запросить астероиды</button>
+        <button onclick="login()">Login</button>
+        <button onclick="disconnect()">Отключиться</button>
+    </div>
+    
+    <div id="status">Статус: Не подключен</div>
+    <div id="log"></div>
+    
+    <script>
+        let ws = null;
+        
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logEl.textContent += `[${time}] ${msg}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+        
+        function updateStatus(status) {
+            document.getElementById('status').textContent = 'Статус: ' + status;
+        }
+        
+        function connect() {
+            if (ws) {
+                log('⚠️ Уже подключено');
+                return;
+            }
+            
+            log('🔌 Подключение к ws://localhost:8080...');
+            ws = new WebSocket('ws://localhost:8080');
+            
+            ws.onopen = () => {
+                log('✅ Подключено к серверу');
+                updateStatus('Подключено');
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                log(`📨 Получено: ${message.type}`);
+                
+                if (message.data) {
+                    if (Array.isArray(message.data)) {
+                        log(`   Данные: массив из ${message.data.length} элементов`);
+                        if (message.data.length > 0) {
+                            log(`   Первый элемент: ${JSON.stringify(message.data[0]).substring(0, 200)}...`);
+                        }
+                    } else {
+                        log(`   Данные: ${JSON.stringify(message.data).substring(0, 200)}`);
+                    }
+                }
+                
+                // Автоматически обрабатываем asteroidsData
+                if (message.type === 'asteroidsData' && Array.isArray(message.data)) {
+                    log(`🎯 Астероиды получены: ${message.data.length} шт.`);
+                }
+            };
+            
+            ws.onclose = () => {
+                log('🔌 Отключено от сервера');
+                updateStatus('Отключено');
+                ws = null;
+            };
+            
+            ws.onerror = (error) => {
+                log(`❌ Ошибка: ${error}`);
+                updateStatus('Ошибка');
+            };
+        }
+        
+        function getAsteroids() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('⚠️ Не подключено');
+                return;
+            }
+            
+            const position = {
+                x: parseFloat(document.getElementById('posX')?.value) || 0,
+                y: parseFloat(document.getElementById('posY')?.value) || 0,
+                z: parseFloat(document.getElementById('posZ')?.value) || 10
+            };
+            
+            const message = {
+                type: 'getAsteroids',
+                data: {
+                    position: position,
+                    radius: 3000
+                }
+            };
+            
+            log(`📤 Отправка: ${JSON.stringify(message)}`);
+            ws.send(JSON.stringify(message));
+        }
+        
+        function login() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('⚠️ Не подключено');
+                return;
+            }
+            
+            const playerName = document.getElementById('playerName').value;
+            const message = {
+                type: 'playerLogin',
+                data: { playerName }
+            };
+            
+            log(`📤 Login: ${JSON.stringify(message)}`);
+            ws.send(JSON.stringify(message));
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                log('Отключение...');
+            } else {
+                log('⚠️ Не подключено');
+            }
+        }
+        
+        // Добавим поля для координат
+        document.write('<div style="margin-top: 20px;">');
+        document.write('Позиция: ');
+        document.write('X: <input type="number" id="posX" value="0" style="width: 80px;"> ');
+        document.write('Y: <input type="number" id="posY" value="0" style="width: 80px;"> ');
+        document.write('Z: <input type="number" id="posZ" value="10" style="width: 80px;">');
+        document.write('</div>');
+    </script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+bash: строка 1: 1590524 Обрыв терминальной линии                      node dist/server/GameServer.js > /tmp/cosmocraft.log 2>&1
+bash: строка 1: 1625928 Обрыв терминальной линии                      node dist/server/GameServer.js > /tmp/cosmocraft.log 2>&1
+bash: строка 1:  6704 Обрыв терминальной линии                      node dist/server/GameServer.js > /tmp/cosmocraft.log 2>&1

@@ -3,7 +3,18 @@
     "allow": [
       "Bash(npm run *)",
       "Bash(sleep *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(mysql *)",
+      "Bash(node *)",
+      "Bash(xargs *)",
+      "Bash(netstat *)",
+      "Bash(ss *)",
+      "Bash(timeout *)",
+      "Bash(true)",
+      "Bash(nohup *)",
+      "Bash(ps *)",
+      "Bash(kill *)",
+      "Bash(nc *)"
     ]
   },
   "$version": 3
