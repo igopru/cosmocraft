@@ -1,0 +1,139 @@
+{
+  "player_id": "c2cb653a-6ff7-4b9f-ae1c-8e1ff2f35578",
+  "updated_at": "2026-04-10T17:54:11.364Z",
+  "total_completed": 15,
+  "missions": [
+    {
+      "id": "mission_day_cosmonautics",
+      "title": "День Космонавтики",
+      "status": "completed",
+      "progress": {
+        "is_correct": true,
+        "submitted_at": "2026-04-08T14:10:40.382Z",
+        "answer_selected": 0
+      },
+      "completed_at": "2026-04-08T14:10:40.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_first_cosmonaut",
+      "title": "Первый в космосе",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:29:35.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_moon_landing",
+      "title": "Первая посадка на Луну",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:29:44.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_first_satellite",
+      "title": "Первый спутник",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:29:55.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_first_woman",
+      "title": "Первая женщина-космонавт",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:30:01.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_heliocentric",
+      "title": "Гелиоцентрическая система",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:32:29.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_light_speed",
+      "title": "Скорость света",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:32:58.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_gravity",
+      "title": "Закон всемирного тяготения",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:33:59.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_escape_velocity",
+      "title": "Вторая космическая скорость",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:33:47.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_red_planet",
+      "title": "Красная планета",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:34:24.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_largest_planet",
+      "title": "Гигант Солнечной системы",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:45:45.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_black_holes",
+      "title": "Загадка чёрных дыр",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:38:49.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_distance_moon",
+      "title": "Расстояние до Луны",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-10T17:54:11.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_time_to_mars",
+      "title": "Время полёта до Марса",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:37:49.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_planets_count",
+      "title": "Планеты Солнечной системы",
+      "status": "completed",
+      "progress": null,
+      "completed_at": "2026-04-08T17:38:23.000Z",
+      "attempts": 1
+    },
+    {
+      "id": "mission_odyssey_3_sectors",
+      "title": "Космическая одиссея",
+      "status": "in_progress",
+      "progress": null,
+      "completed_at": null,
+      "attempts": 1
+    }
+  ]
+}

@@ -20,7 +20,8 @@
     "src/client/**/*",
     "src/ui/**/*",
     "src/types/**/*",
-    "src/designer/**/*"
+    "src/designer/**/*",
+    "src/shared/**/*"
   ],
   "exclude": ["node_modules", "dist", "src/server"]
 }

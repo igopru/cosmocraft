@@ -1,0 +1,579 @@
+{
+  "name": "UFO",
+  "version": "1.0",
+  "createdAt": "2026-04-13T14:45:09.059Z",
+  "gridSize": 64,
+  "voxelCount": 95,
+  "voxels": [
+    {
+      "x": 32,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 37,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 39,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 40,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 34,
+      "type": "hull_light"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 35,
+      "type": "hull_light"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 36,
+      "type": "hull_light"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 37,
+      "type": "hull_light"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 39,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 40,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 34,
+      "type": "hull_light"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 35,
+      "type": "hull_light"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 36,
+      "type": "hull_light"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 37,
+      "type": "hull_light"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 38,
+      "type": "hull_light"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 39,
+      "type": "hull_light"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 40,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 34,
+      "y": 33,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 34,
+      "y": 34,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "hull_light"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 35,
+      "type": "hull_light"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 36,
+      "type": "hull_light"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 37,
+      "type": "hull_light"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 38,
+      "type": "hull_light"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 39,
+      "type": "hull_light"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 40,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 35,
+      "y": 33,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 37,
+      "type": "shield_gen"
+    },
+    {
+      "x": 35,
+      "y": 34,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 35,
+      "y": 35,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 34,
+      "type": "hull_light"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 35,
+      "type": "hull_light"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 36,
+      "type": "hull_light"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 37,
+      "type": "hull_light"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 38,
+      "type": "hull_light"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 39,
+      "type": "hull_light"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 40,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 41,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 36,
+      "y": 33,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 36,
+      "y": 33,
+      "z": 37,
+      "type": "shield_gen"
+    },
+    {
+      "x": 36,
+      "y": 33,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 36,
+      "y": 34,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 36,
+      "y": 34,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 36,
+      "y": 34,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 34,
+      "type": "hull_light"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 35,
+      "type": "hull_light"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 36,
+      "type": "hull_light"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 37,
+      "type": "hull_light"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 38,
+      "type": "hull_light"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 39,
+      "type": "hull_light"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 40,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 37,
+      "y": 33,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 37,
+      "y": 33,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 37,
+      "y": 33,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 37,
+      "y": 34,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 37,
+      "y": 34,
+      "z": 37,
+      "type": "shield_gen"
+    },
+    {
+      "x": 37,
+      "y": 34,
+      "z": 38,
+      "type": "window"
+    },
+    {
+      "x": 37,
+      "y": 35,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 34,
+      "type": "hull_light"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 35,
+      "type": "hull_light"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 36,
+      "type": "hull_light"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 37,
+      "type": "hull_light"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 38,
+      "type": "hull_light"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 39,
+      "type": "hull_light"
+    },
+    {
+      "x": 38,
+      "y": 32,
+      "z": 40,
+      "type": "hull_medium"
+    },
+    {
+      "x": 38,
+      "y": 33,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 38,
+      "y": 33,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 38,
+      "y": 34,
+      "z": 36,
+      "type": "window"
+    },
+    {
+      "x": 38,
+      "y": 34,
+      "z": 37,
+      "type": "window"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 33,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 35,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 36,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 38,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 39,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 39,
+      "y": 32,
+      "z": 40,
+      "type": "hull_reinforced"
+    },
+    {
+      "x": 40,
+      "y": 32,
+      "z": 37,
+      "type": "hull_reinforced"
+    }
+  ]
+}

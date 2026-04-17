@@ -1,4 +1,8 @@
 // server.js
+
+// Загрузка переменных окружения
+require('dotenv').config();
+
 require('ts-node').register({
     transpileOnly: true,
     compilerOptions: {

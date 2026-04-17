@@ -1,0 +1,12 @@
+{
+  "player_id": "612d096e29350e2f",
+  "total_xp": 35,
+  "missions_completed": 1,
+  "current_rank": {
+    "id": "rank_1",
+    "title": "Новичок",
+    "icon": "🚀",
+    "color": "#9e9e9e"
+  },
+  "updated_at": "2026-04-08T14:42:53.403Z"
+}

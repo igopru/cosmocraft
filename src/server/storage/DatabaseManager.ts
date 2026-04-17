@@ -84,16 +84,17 @@ export class DatabaseManager {
   /**
    * Получить астероиды в радиусе
    */
-  async getAsteroidsInRange(centerX: number, centerY: number, centerZ: number, radius: number) {
+  async getAsteroidsInRange(centerX: number, centerY: number, centerZ: number, radius: number, minDistFromStar: number = 350) {
     const [rows] = await this.pool.execute(
       `SELECT * FROM asteroids
        WHERE is_depleted = FALSE
        AND SQRT(POW(position_x - ?, 2) + POW(position_y - ?, 2) + POW(position_z - ?, 2)) < ?
+       AND SQRT(POW(position_x, 2) + POW(position_y, 2) + POW(position_z, 2)) > ?
        ORDER BY SQRT(POW(position_x - ?, 2) + POW(position_y - ?, 2) + POW(position_z - ?, 2))
        LIMIT 100`,
-      [centerX, centerY, centerZ, radius, centerX, centerY, centerZ]
+      [centerX, centerY, centerZ, radius, minDistFromStar, centerX, centerY, centerZ]
     );
-    
+
     return rows;
   }
   
@@ -174,7 +175,7 @@ export class DatabaseManager {
    * Выполнить SQL запрос (для общего доступа)
    */
   async execute(query: string, values?: any[]) {
-    return await this.pool.execute(query, values);
+    return await this.pool.execute(query, values || []);
   }
 
   /**

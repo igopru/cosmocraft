@@ -1,6 +1,8 @@
 // src/server/services/EmailService.ts
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
+import { exec } from 'child_process';
+import * as fs from 'fs';
 
 /**
  * Конфигурация email сервера
@@ -16,6 +18,9 @@ export interface EmailConfig {
   };
   from: string;
   fromName: string;
+  via?: 'smtp' | 'msmtp';
+  msmtpPath?: string;
+  msmtpConfig?: string;
 }
 
 /**
@@ -29,24 +34,73 @@ export class EmailService {
     this.config = config;
 
     if (config.enabled) {
-      this.transporter = nodemailer.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.secure, // true для 465, false для других портов
-        auth: config.auth,
-      });
+      // Используем msmtp если настроен
+      if (config.via === 'msmtp' && config.msmtpPath) {
+        console.log('📧 Email сервис настроен через msmtp');
+        console.log(`   msmtp: ${config.msmtpPath}`);
+        console.log(`   config: ${config.msmtpConfig || '~/.msmtprc'}`);
+        console.log(`   from: ${config.from}`);
+      } else {
+        // Используем прямой SMTP через nodemailer
+        this.transporter = nodemailer.createTransport({
+          host: config.host,
+          port: config.port,
+          secure: config.secure,
+          auth: config.auth,
+          tls: {
+            rejectUnauthorized: false // Для самоподписанных сертификатов
+          }
+        });
 
-      // Проверяем подключение
-      this.transporter.verify((error, success) => {
-        if (error) {
-          console.error('❌ Ошибка подключения к SMTP серверу:', error.message);
-        } else {
-          console.log('✅ Email сервис подключён');
-        }
-      });
+        // Проверяем подключение
+        this.transporter.verify((error, success) => {
+          if (error) {
+            console.error('❌ Ошибка подключения к SMTP серверу:', error.message);
+          } else {
+            console.log('✅ Email сервис подключён (SMTP)');
+          }
+        });
+      }
     } else {
       console.log('📧 Email сервис отключен (письма будут в лог)');
     }
+  }
+
+  /**
+   * Отправка email через msmtp
+   */
+  private async sendViaMsmtp(to: string, subject: string, html: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const msmtpPath = this.config.msmtpPath || '/usr/bin/msmtp';
+      const msmtpConfig = this.config.msmtpConfig || '/home/father/.msmtprc';
+      
+      // Создаём MIME-сообщение
+      const mimeMessage = [
+        `From: "${this.config.fromName}" <${this.config.from}>`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset="utf-8"',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        html
+      ].join('\n');
+
+      const args = msmtpConfig ? ['-C', msmtpConfig, '-t'] : ['-t'];
+      
+      const msmtp = exec(`${msmtpPath} ${args.join(' ')}`, (error, stdout, stderr) => {
+        if (error) {
+          console.error('❌ Ошибка отправки через msmtp:', stderr || error.message);
+          reject(new Error(stderr || error.message));
+        } else {
+          console.log(`✅ Email отправлен через msmtp: ${to}`);
+          resolve();
+        }
+      });
+
+      msmtp.stdin?.write(mimeMessage);
+      msmtp.stdin?.end();
+    });
   }
 
   /**
@@ -136,12 +190,30 @@ export class EmailService {
     subject: string,
     html: string
   ): Promise<void> {
-    if (!this.config.enabled || !this.transporter) {
+    if (!this.config.enabled) {
       // Логируем письмо вместо отправки
       console.log('\n📧 EMAIL (отключен):');
       console.log(`   To: ${to}`);
       console.log(`   Subject: ${subject}`);
       console.log(`   HTML: ${html.substring(0, 200)}...`);
+      return;
+    }
+
+    // Используем msmtp если настроен
+    if (this.config.via === 'msmtp' && this.config.msmtpPath) {
+      try {
+        await this.sendViaMsmtp(to, subject, html);
+      } catch (error: any) {
+        console.error('❌ Ошибка отправки email (msmtp):', error.message);
+      }
+      return;
+    }
+
+    // Используем прямой SMTP
+    if (!this.transporter) {
+      console.log('\n📧 EMAIL (SMTP транспортер не создан):');
+      console.log(`   To: ${to}`);
+      console.log(`   Subject: ${subject}`);
       return;
     }
 

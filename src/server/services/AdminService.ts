@@ -193,14 +193,17 @@ export class AdminService {
    * Получить всех игроков
    */
   async getAllPlayers(limit: number = 100, offset: number = 0): Promise<any[]> {
+    const lim = Number(limit) || 100;
+    const off = Number(offset) || 0;
     const [rows] = await this.db.execute(
-      `SELECT p.*, pc.email, pc.is_email_verified, pc.is_account_locked,
+      `SELECT p.id, p.username, p.email, p.created_at, p.last_login, p.is_online,
+              pc.email as auth_email, pc.is_email_verified, pc.is_account_locked,
+              pc.failed_login_attempts, pc.lock_until,
               (SELECT COUNT(*) FROM pilot_sessions WHERE player_id = p.id AND expires_at > NOW()) as active_sessions
        FROM players p
        LEFT JOIN pilot_credentials pc ON p.id = pc.player_id
        ORDER BY p.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [limit, offset]
+       LIMIT ${lim} OFFSET ${off}`
     );
 
     return rows as any[];
@@ -509,20 +512,54 @@ export class AdminService {
   /**
    * Получить журнал действий администраторов
    */
-  async getAdminActionsLog(limit: number = 100): Promise<any[]> {
+  async getAdminActionsLog(limit: number = 100, offset: number = 0, actionType?: string): Promise<any[]> {
     try {
-      const [rows] = await this.db.execute(
-        `SELECT al.*, au.username as admin_username
-         FROM admin_actions_log al
-         LEFT JOIN admin_users au ON al.admin_id = au.id
-         ORDER BY al.created_at DESC
-         LIMIT ?`,
-        [limit]
-      );
+      let query = `SELECT al.*, au.username as admin_username
+                   FROM admin_actions_log al
+                   LEFT JOIN admin_users au ON al.admin_id = au.id`;
+      const params: any[] = [];
+
+      if (actionType) {
+        query += ' WHERE al.action_type = ?';
+        params.push(actionType);
+      }
+
+      query += ' ORDER BY al.created_at DESC LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+
+      const [rows] = await this.db.execute(query, params);
       return rows as any[];
     } catch (error) {
       console.error('Ошибка получения лога:', error);
       return [];
+    }
+  }
+
+  /**
+   * Записать действие в audit_log
+   */
+  async logAuditChange(
+    adminId: string,
+    action: string,
+    resourceType: string,
+    resourceId: string,
+    oldValue: any,
+    newValue: any,
+    ipAddress: string,
+    userAgent: string
+  ): Promise<void> {
+    try {
+      await this.db.execute(
+        `INSERT INTO admin_audit_log
+         (admin_id, action, resource_type, resource_id, old_value, new_value, ip_address, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [adminId, action, resourceType, resourceId,
+         oldValue ? JSON.stringify(oldValue) : null,
+         newValue ? JSON.stringify(newValue) : null,
+         ipAddress, userAgent]
+      );
+    } catch (error) {
+      console.error('Ошибка записи в audit_log:', error);
     }
   }
 
@@ -600,11 +637,18 @@ export class AdminService {
   private async logAdminAction(action: AdminAction): Promise<void> {
     try {
       await this.db.execute(
-        `INSERT INTO admin_actions_log 
+        `INSERT INTO admin_actions_log
          (admin_id, action_type, target_type, target_id, details, ip_address, user_agent)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [action.adminId, action.actionType, action.targetType, action.targetId, 
-         JSON.stringify(action.details), action.ipAddress, action.userAgent]
+        [
+          action.adminId,
+          action.actionType,
+          action.targetType || null,
+          action.targetId || null,
+          action.details ? JSON.stringify(action.details) : null,
+          action.ipAddress || null,
+          action.userAgent || null
+        ]
       );
     } catch (error) {
       console.error('Ошибка логирования:', error);

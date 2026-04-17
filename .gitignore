@@ -7,6 +7,9 @@ dist/
 public/dist/
 *.log
 
+# Логи торговли
+logs/
+
 # Окружение
 .env
 .env.local

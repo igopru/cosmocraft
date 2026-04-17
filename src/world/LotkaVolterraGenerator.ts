@@ -32,9 +32,14 @@ interface ResourcePopulations {
 
 export class LotkaVolterraGenerator {
   private db: mysql.Pool;
-  
+  private minDist: number = 350;
+
   constructor(dbConfig: any) {
     this.db = mysql.createPool(dbConfig);
+  }
+
+  setMinAsteroidDist(dist: number) {
+    this.minDist = dist;
   }
   
   /**
@@ -167,6 +172,10 @@ export class LotkaVolterraGenerator {
           // Используем модель Лотки-Вольтерры для определения ресурсов
           // Время зависит от расстояния от центра
           const distance = Math.sqrt(realX*realX + realY*realY + realZ*realZ);
+
+          // Пропускаем зону базовой станции
+          if (distance < this.minDist) continue;
+
           const time = Math.max(0.1, distance / 2000); // время увеличивается с расстоянием
           
           const populations = this.calculatePopulations(realX, realY, realZ, time);

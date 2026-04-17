@@ -1,23 +1,30 @@
 # 🌌 CosmoCraft - Космическая стратегия
 
-![CosmoCraft](https://img.shields.io/badge/version-0.1.0-blue)
-![Node.js](https://img.shields.io/badge/Node.js-18-green)
-![Three.js](https://img.shields.io/badge/Three.js-r128-orange)
+![CosmoCraft](https://img.shields.io/badge/version-0.6.1-blue)
+![Node.js](https://img.shields.io/badge/Node.js-22-green)
+![Three.js](https://img.shields.io/badge/Three.js-r183-orange)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)
+![Express](https://img.shields.io/badge/Express-5-green)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## 🎮 Об игре
 
-**CosmoCraft** - это многопользовательская космическая стратегия с воксельной графикой, где игроки исследуют процедурно-генерируемые миры, добывают ресурсы и строят космические станции.
+**CosmoCraft** — многопользовательская космическая стратегия с воксельной графикой.
+Исследуйте процедурно-генерируемые миры, добывайте ресурсы, стройте станции,
+выполняйте задания и поднимайтесь по рангам пилотов.
 
 ### ✨ Особенности
 
 - **Процедурная генерация** миров на основе модели Лотки-Вольтерры
-- **Процедурная генерация** положения астероидов по модели клеточного автомата
+- **Процедурная генерация** положений астероидов (клеточный автомат)
 - **Воксельная графика** в стиле Minecraft в космосе
-- **Экосистема ресурсов** - металл, кремний, лёд, редкие элементы
+- **Экосистема ресурсов** — металл, кремний, лёд, редкие элементы
 - **Многопользовательский режим** через WebSocket
-- **Система престижа** - каждый новый мир сложнее предыдущего
-- **MySQL** для хранения данных игроков и миров
+- **Система престижа** — каждый новый мир сложнее предыдущего
+- **Система заданий** — 15 викторин по космической тематике
+- **Ранги пилотов** — 8 уровней от Новичка до Легенды
+- **Админ-панель** — управление игроками, заданиями, безопасность
+- **MySQL 8.0** для хранения данных
 
 ---
 
@@ -91,30 +98,41 @@ python3 -m http.server 8001
 
 ```
 cosmocraft/
-├── src/                       # Исходный код
+├── src/                       # Исходный код (TypeScript)
 │   ├── client/                # Клиентская часть (Three.js)
-│   ├── server/                # Серверная часть (Node.js + WebSocket)
-│   ├── world/                 # Генерация миров (Лотка-Вольтерра)
-│   ├── ui/                    # Интерфейс
+│   │   ├── main.ts            # Точка входа, игровой цикл
+│   │   ├── ShipController.ts  # Управление кораблём, HUD, пауза
+│   │   └── networking/        # WebSocket клиент
+│   ├── server/                # Серверная часть (Express 5 + WS)
+│   │   ├── GameServer.ts      # Основной сервер
+│   │   ├── services/          # Бизнес-логика
+│   │   │   ├── AdminService.ts    # Админ-панель
+│   │   │   └── MissionService.ts  # Система заданий
+│   │   ├── routes/            # API маршруты
+│   │   │   ├── admin.routes.ts    # Админ API
+│   │   │   └── mission.routes.ts  # Задания API
+│   │   └── storage/           # Работа с БД
+│   ├── world/                 # Генерация миров
+│   ├── ui/                    # UI компоненты
+│   │   └── MissionUI.ts       # Панель заданий
 │   └── config/                # Конфигурация
-├── public/                    # Статические файлы
-├── worlds/                    # Сохранения миров
-├── backups/                   # Бэкапы БД
-├── players/                   # Профили игроков (UUID)
-├── stations/                  # Станции (shared/)
-├── scripts/                   # Вспомогательные скрипты
-│   └── database/              # SQL скрипты
-└── docs/                      # Документация
-
-⚠️ Файлы авторизации исключены из репозитория (см. SECURITY_NOTICE.md):
-    - src/server/routes/auth.routes.ts
-    - src/server/services/AuthService.ts
-    - src/server/services/EmailService.ts
-    - scripts/database/auth-schema.sql
-    - public/registration.html
-    - public/verification.html
-    - public/password-reset.html
+├── public/                    # Статические файлы (браузер)
+│   ├── admin/                 # Админ-панель (SPA)
+│   └── dist/                  # Скомпилированный клиент
+├── scripts/database/          # SQL скрипты
+│   ├── admin-schema.sql       # Схема админ-панели
+│   ├── admin-fix-views.sql    # Исправления VIEW
+│   └── missions-schema.sql   # Схема заданий
+├── docs/                      # Документация
+└── dist/                      # Скомпилированный сервер
 ```
+
+### Порты
+
+| Порт | Протокол | Назначение |
+|------|----------|------------|
+| 8080 | WebSocket | Игровой сервер (позиции, астероиды, чат) |
+| 8001 | HTTP/Express | Статические файлы, API, админ-панель |
 
 ---
 
@@ -134,9 +152,20 @@ cosmocraft/
 ### Основные
 
 ```bash
-npm run dev          # Запуск сервера разработки
-npm run build        # Компиляция TypeScript
+npm run build        # Компиляция TypeScript (server + client)
 npm run start        # Запуск продакшен сервера
+./cosmocraft.sh start    # Запуск через сервис-скрипт
+./cosmocraft.sh restart  # Перезапуск
+./cosmocraft.sh stop     # Остановка
+./cosmocraft.sh status   # Статус сервера
+```
+
+### Разработка
+
+```bash
+npm run dev          # Сервер с nodemon (авто-перезапуск)
+npm run watch:server # Watch-режим сервера
+npm run watch:client # Watch-режим клиента
 ```
 
 ### База данных
@@ -145,13 +174,13 @@ npm run start        # Запуск продакшен сервера
 npm run db:init      # Инициализация БД (создание таблиц)
 npm run db:backup    # Создание бэкапа БД
 npm run db:restore   # Восстановление из бэкапа
-npm run migrate      # Миграция данных в БД
+npm run migrate      # Миграция данных
 ```
 
-### Тестирование
+### Бэкап
 
 ```bash
-npm run test-world   # Тест генерации мира
+./backup_db.sh       # Бэкап БД + файлов
 ```
 
 ---
@@ -160,7 +189,11 @@ npm run test-world   # Тест генерации мира
 
 | Файл | Описание |
 |------|----------|
+| [CHANGELOG.md](./CHANGELOG.md) | 📋 История изменений по версиям |
 | [SECURITY_NOTICE.md](./SECURITY_NOTICE.md) | 🔒 **ВАЖНО:** Ограничение распространения кода авторизации |
+| [SETUP_SECURITY.md](./SETUP_SECURITY.md) | 🔐 **Настройка:** админ-панель, SMTP, БД, запуск сервера |
+| [docs/MISSIONS.md](./docs/MISSIONS.md) | 🎯 **Система заданий:** викторины, ранги, награды, API |
+| [docs/ADMIN_PANEL.md](./docs/ADMIN_PANEL.md) | 🛡️ **Админ-панель:** обзор, игроки, безопасность, журнал |
 | [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md) | 🔐 **Система авторизации**: JWT, bcrypt, email, IP whitelist |
 | [docs/SECURITY_GUIDE.md](./docs/SECURITY_GUIDE.md) | 🛡️ **Безопасность сервера**: firewall, HTTPS, fail2ban, бэкапы |
 | [docs/DATABASE.md](./docs/DATABASE.md) | 🗄️ База данных MySQL, схема, запросы |

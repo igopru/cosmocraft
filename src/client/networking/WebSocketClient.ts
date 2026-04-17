@@ -5,13 +5,19 @@ export class WebSocketClient {
   private messageHandlers: Map<string, (data: any) => void> = new Map();
   
   constructor(url: string) {
-    console.log('🔌 Connecting to server...');
+    console.log('🔌 Connecting to server:', url);
     this.ws = new WebSocket(url);
-    
+
     this.ws.onopen = () => {
       console.log('✅ Connected to server');
       this.connected = true;
-      
+
+      // Вызываем обработчик 'connect' если он есть
+      const connectHandler = this.messageHandlers.get('connect');
+      if (connectHandler) {
+        connectHandler({});
+      }
+
       // Запрашиваем информацию о мире
       this.send('getWorldInfo', {});
     };
@@ -41,7 +47,14 @@ export class WebSocketClient {
   on(type: string, handler: (data: any) => void) {
     this.messageHandlers.set(type, handler);
   }
-  
+
+  /**
+   * Войти как пилот после подключения
+   */
+  loginPlayer(playerName: string) {
+    this.send('playerLogin', { playerName });
+  }
+
   send(type: string, data: any) {
     if (this.connected) {
       console.log('📤 Sending:', type, data);

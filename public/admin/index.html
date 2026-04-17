@@ -330,6 +330,109 @@
             transform: translateX(30px);
         }
 
+        /* Missions Section */
+        .missions-stats {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .missions-actions {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .mission-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .mission-table th,
+        .mission-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mission-table th {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .mission-table tr:hover {
+            background: rgba(68, 170, 255, 0.05);
+        }
+
+        .mission-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+
+        .mission-modal-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 25px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 1001;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-cancel {
+            background: var(--bg-tertiary) !important;
+            color: var(--text-secondary) !important;
+        }
+
+        .btn-danger-small {
+            background: var(--danger) !important;
+            color: white !important;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn-edit-small {
+            background: var(--accent) !important;
+            color: white !important;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
         /* Messages */
         .message {
             padding: 15px 20px;
@@ -416,6 +519,7 @@
                 <ul class="sidebar-menu">
                     <li><button class="active" data-section="dashboard">📊 Обзор</button></li>
                     <li><button data-section="players">👥 Игроки</button></li>
+                    <li><button data-section="missions">📋 Задания</button></li>
                     <li><button data-section="settings">⚙️ Настройки</button></li>
                     <li><button data-section="security">🛡️ Безопасность</button></li>
                     <li><button data-section="logs">📋 Журнал</button></li>
@@ -458,12 +562,115 @@
                     <div id="players-container" class="loading">Загрузка...</div>
                 </section>
 
+                <!-- Missions Section -->
+                <section id="section-missions" class="section">
+                    <h2>📋 Управление заданиями</h2>
+                    <div id="missions-message" class="message"></div>
+                    
+                    <div class="missions-stats" id="missions-stats"></div>
+                    
+                    <div class="missions-actions">
+                        <button id="create-mission-btn" class="btn" style="width: auto;">➕ Создать задание</button>
+                        <button id="refresh-missions-btn" class="btn" style="width: auto;">🔄 Обновить</button>
+                    </div>
+                    
+                    <div id="missions-container"></div>
+                    
+                    <!-- Модальное окно создания/редактирования задания -->
+                    <div id="mission-modal" style="display: none;">
+                        <div class="modal-overlay" id="mission-modal-overlay"></div>
+                        <div class="modal-content" id="mission-modal-content">
+                            <h3 id="mission-modal-title">Создать задание</h3>
+                            <form id="mission-form">
+                                <input type="hidden" id="mission-edit-id">
+                                <div class="form-group">
+                                    <label>Название</label>
+                                    <input type="text" id="mission-title" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Описание</label>
+                                    <textarea id="mission-description" rows="3" required></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Категория</label>
+                                        <select id="mission-category">
+                                            <option value="history">📜 История</option>
+                                            <option value="science">🔬 Наука</option>
+                                            <option value="exploration">🧭 Исследования</option>
+                                            <option value="special">⭐ Особые</option>
+                                            <option value="quiz">❓ Викторина</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Тип</label>
+                                        <select id="mission-type">
+                                            <option value="quiz">Викторина</option>
+                                            <option value="flight">Полёт</option>
+                                            <option value="search">Поиск</option>
+                                            <option value="visit">Посещение</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Сложность</label>
+                                        <select id="mission-difficulty">
+                                            <option value="easy">🟢 Лёгкий</option>
+                                            <option value="medium">🟡 Средний</option>
+                                            <option value="hard">🔴 Сложный</option>
+                                            <option value="legendary">🟣 Легендарный</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Вопрос (для викторин)</label>
+                                    <input type="text" id="mission-question">
+                                </div>
+                                <div class="form-group">
+                                    <label>Варианты ответа (JSON массив)</label>
+                                    <textarea id="mission-options" rows="2" placeholder='["Вар 1", "Вар 2", "Вар 3", "Вар 4"]'></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Правильный ответ (индекс 0-3)</label>
+                                    <input type="number" id="mission-correct" min="0" max="3">
+                                </div>
+                                <h4>🎁 Награды</h4>
+                                <div class="form-row">
+                                    <div class="form-group"><label>XP</label><input type="number" id="mission-xp" value="0"></div>
+                                    <div class="form-group"><label>Топливо</label><input type="number" id="mission-fuel" value="0"></div>
+                                    <div class="form-group"><label>Металл</label><input type="number" id="mission-metal" value="0"></div>
+                                    <div class="form-group"><label>Кремний</label><input type="number" id="mission-silicon" value="0"></div>
+                                    <div class="form-group"><label>Лёд</label><input type="number" id="mission-ice" value="0"></div>
+                                    <div class="form-group"><label>Редкие</label><input type="number" id="mission-rare" value="0"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Активно</label>
+                                        <input type="checkbox" id="mission-active" checked style="width: auto;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Повторяемое</label>
+                                        <input type="checkbox" id="mission-repeatable" style="width: auto;">
+                                    </div>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="submit" class="btn" style="width: auto;">💾 Сохранить</button>
+                                    <button type="button" class="btn btn-cancel" id="mission-modal-cancel" style="width: auto;">Отмена</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Settings Section -->
                 <section id="section-settings" class="section">
                     <h2>⚙️ Настройки сервера</h2>
                     <div id="settings-message" class="message"></div>
                     
                     <div class="settings-grid">
+                        <div class="setting-card">
+                            <h3>🌐 Общие</h3>
+                            <div id="settings-general"></div>
+                        </div>
                         <div class="setting-card">
                             <h3>🔐 Авторизация</h3>
                             <div id="settings-auth"></div>
@@ -487,15 +694,36 @@
                 <section id="section-security" class="section">
                     <h2>🛡️ Безопасность</h2>
                     <div id="security-message" class="message"></div>
-                    
-                    <h3>Подозрительная активность</h3>
+
+                    <!-- Статистика безопасности -->
+                    <h3>📊 Статистика за 24 часа</h3>
+                    <div id="security-stats" class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px;"></div>
+
+                    <!-- Подозрительная активность -->
+                    <h3>🚨 Подозрительная активность</h3>
                     <div id="suspicious-activity-container" class="loading">Загрузка...</div>
+
+                    <!-- Журнал запросов на порты -->
+                    <h3 style="margin-top: 30px;">🔌 Запросы на порты (последние 24ч)</h3>
+                    <div id="port-access-container" class="loading">Загрузка...</div>
+
+                    <!-- Топ IP по ошибкам -->
+                    <h3 style="margin-top: 30px;">⚠️ Топ IP с ошибками</h3>
+                    <div id="top-ips-container" class="loading">Загрузка...</div>
                 </section>
 
                 <!-- Logs Section -->
                 <section id="section-logs" class="section">
                     <h2>📋 Журнал действий</h2>
-                    <div id="logs-container" class="loading">Загрузка...</div>
+                    <div id="logs-message" class="message"></div>
+
+                    <!-- Журнал действий админов -->
+                    <h3>👤 Действия администраторов</h3>
+                    <div id="admin-actions-container" class="loading">Загрузка...</div>
+
+                    <!-- Журнал изменений -->
+                    <h3 style="margin-top: 30px;">📝 Журнал изменений</h3>
+                    <div id="audit-changes-container" class="loading">Загрузка...</div>
                 </section>
             </main>
         </div>
@@ -507,6 +735,7 @@
         // ============================================
 
         const API_BASE = '/api/admin';
+        const apiBaseUrl = ''; // Относительный URL (сервер на том же домене)
         let authToken = localStorage.getItem('adminToken');
         let currentAdmin = null;
 
@@ -624,10 +853,10 @@
                     loadSettings();
                     break;
                 case 'security':
-                    loadSuspiciousActivity();
+                    loadSecurity();
                     break;
                 case 'logs':
-                    loadAdminLogs();
+                    loadLogs();
                     break;
             }
         }
@@ -709,43 +938,58 @@
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const players = await response.json();
+
+                if (!players || players.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 40px;">Нет зарегистрированных игроков</p>';
+                    return;
+                }
+
                 container.innerHTML = `
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Имя</th>
+                                <th>#</th>
+                                <th>Имя игрока</th>
                                 <th>Email</th>
+                                <th>Последний вход</th>
                                 <th>Статус</th>
-                                <th>Создан</th>
                                 <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${players.map(p => `
+                            ${players.map((p, i) => {
+                                const email = p.auth_email || p.email || 'N/A';
+                                const lastLogin = p.last_login ? new Date(p.last_login).toLocaleString('ru-RU') : 'Никогда';
+                                const isLocked = p.is_account_locked === 1 || p.is_account_locked === true;
+                                return `
                                 <tr>
-                                    <td>${escapeHtml(p.username)}</td>
-                                    <td>${escapeHtml(p.email || 'N/A')}</td>
+                                    <td style="color: #666;">${i + 1}</td>
+                                    <td><strong>${escapeHtml(p.username)}</strong><br><small style="color:#666">${escapeHtml(p.id.substring(0, 8))}</small></td>
+                                    <td>${escapeHtml(email)}</td>
+                                    <td><small>${lastLogin}</small></td>
                                     <td>
                                         ${p.is_online ? '<span class="status-badge status-online">Онлайн</span>' : ''}
-                                        ${p.is_account_locked ? '<span class="status-badge status-locked">Заблокирован</span>' : ''}
-                                        ${!p.is_online && !p.is_account_locked ? '<span class="status-badge status-offline">Офлайн</span>' : ''}
+                                        ${isLocked ? '<span class="status-badge status-locked">🔒 Заблокирован</span>' : ''}
+                                        ${!p.is_online && !isLocked ? '<span class="status-badge status-offline">Офлайн</span>' : ''}
                                     </td>
-                                    <td>${new Date(p.created_at).toLocaleDateString()}</td>
                                     <td>
-                                        ${!p.is_account_locked ? 
-                                            `<button class="btn btn-danger" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="banPlayer('${p.id}')">Заблокировать</button>` : 
+                                        ${!isLocked ?
+                                            `<button class="btn btn-danger" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="banPlayer('${p.id}')">Заблокировать</button>` :
                                             `<button class="btn btn-success" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="unbanPlayer('${p.id}')">Разблокировать</button>`
                                         }
                                         <button class="btn btn-danger" style="width: auto; padding: 6px 12px; font-size: 12px; margin-left: 5px;" onclick="deletePlayer('${p.id}')">Удалить</button>
                                     </td>
-                                </tr>
-                            `).join('')}
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
+                    <p style="color: var(--text-secondary); margin-top: 10px; font-size: 12px;">Всего игроков: ${players.length}</p>
                 `;
             } catch (error) {
-                container.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки игроков</p>';
+                console.error('Ошибка загрузки игроков:', error);
+                container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 20px;">Ошибка загрузки игроков: ' + escapeHtml(error.message) + '</p>';
             }
         }
 
@@ -829,12 +1073,14 @@
                 
                 // Group settings by category
                 const categories = {
+                    general: settings.filter(s => s.category === 'general'),
                     auth: settings.filter(s => s.category === 'auth'),
                     game: settings.filter(s => s.category === 'game'),
                     email: settings.filter(s => s.category === 'email'),
                     security: settings.filter(s => s.category === 'security')
                 };
 
+                renderSettings('settings-general', categories.general);
                 renderSettings('settings-auth', categories.auth);
                 renderSettings('settings-game', categories.game);
                 renderSettings('settings-email', categories.email);
@@ -911,35 +1157,67 @@
         // Security & Logs
         // ============================================
 
+        async function loadSecurity() {
+            loadSecurityStats();
+            loadSuspiciousActivity();
+            loadPortAccessLog();
+            loadTopIps();
+        }
+
+        async function loadSecurityStats() {
+            const container = document.getElementById('security-stats');
+            try {
+                const response = await fetch(`${API_BASE}/security/stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const stats = await response.json();
+
+                const items = [
+                    { label: 'Уникальные IP', value: stats.unique_ips_24h || 0, icon: '🌐' },
+                    { label: 'WS запросы (8080)', value: stats.ws_requests_24h || 0, icon: '🔌' },
+                    { label: 'HTTP запросы (8001)', value: stats.http_requests_24h || 0, icon: '🌍' },
+                    { label: 'Ошибки (4xx/5xx)', value: stats.error_requests_24h || 0, icon: '❌' },
+                    { label: 'Неавторизованные (401)', value: stats.unauthorized_24h || 0, icon: '🔑' },
+                    { label: 'Запрещённые (403)', value: stats.forbidden_24h || 0, icon: '🚫' },
+                    { label: 'Неудачные входы', value: stats.failed_logins_24h || 0, icon: '🔓' },
+                    { label: 'Действия админов', value: stats.admin_actions_24h || 0, icon: '👤' },
+                ];
+
+                container.innerHTML = items.map(it => `
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 24px;">${it.icon}</div>
+                        <div style="font-size: 20px; font-weight: bold; color: var(--accent);">${it.value}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${it.label}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки</p>';
+            }
+        }
+
         async function loadSuspiciousActivity() {
             const container = document.getElementById('suspicious-activity-container');
-            
             try {
                 const response = await fetch(`${API_BASE}/security/suspicious`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
-
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const activity = await response.json();
-                
+
                 if (activity.length === 0) {
-                    container.innerHTML = '<p style="color: var(--success); padding: 20px; text-align: center;">Подозрительная активность не обнаружена</p>';
+                    container.innerHTML = '<p style="color: var(--success); padding: 20px; text-align: center;">✅ Подозрительная активность не обнаружена</p>';
                     return;
                 }
 
                 container.innerHTML = `
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Email</th>
-                                <th>Неудачных попыток</th>
-                                <th>IP адреса</th>
-                                <th>Последняя попытка</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Игрок</th><th>Email</th><th>Неудачных попыток</th><th>IP адреса</th><th>Последняя попытка</th></tr></thead>
                         <tbody>
                             ${activity.map(a => `
                                 <tr>
-                                    <td>${escapeHtml(a.email)}</td>
+                                    <td>${escapeHtml(a.username || 'N/A')}</td>
+                                    <td>${escapeHtml(a.email || 'N/A')}</td>
                                     <td><span class="status-badge status-locked">${a.failed_attempts}</span></td>
                                     <td style="font-family: monospace; font-size: 12px;">${escapeHtml(a.ip_list)}</td>
                                     <td>${new Date(a.last_attempt).toLocaleString()}</td>
@@ -953,35 +1231,147 @@
             }
         }
 
-        async function loadAdminLogs() {
-            const container = document.getElementById('logs-container');
-            
+        async function loadPortAccessLog() {
+            const container = document.getElementById('port-access-container');
             try {
-                const response = await fetch(`${API_BASE}/logs`, {
+                const response = await fetch(`${API_BASE}/security/port-access?hours=24&limit=50`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
-
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const logs = await response.json();
-                
+
+                if (logs.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary); padding: 20px; text-align: center;">Нет записей за последние 24ч</p>';
+                    return;
+                }
+
                 container.innerHTML = `
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Время</th>
-                                <th>Администратор</th>
-                                <th>Действие</th>
-                                <th>Цель</th>
-                                <th>Детали</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Время</th><th>IP</th><th>Порт</th><th>Метод</th><th>Путь</th><th>Статус</th><th>Время (мс)</th></tr></thead>
+                        <tbody>
+                            ${logs.slice(0, 30).map(l => {
+                                const statusColor = l.status_code >= 500 ? 'var(--danger)' : l.status_code >= 400 ? 'var(--warning)' : 'var(--success)';
+                                return `<tr>
+                                    <td><small>${new Date(l.created_at).toLocaleTimeString()}</small></td>
+                                    <td style="font-family:monospace;font-size:12px">${escapeHtml(l.ip_address)}</td>
+                                    <td>${l.port}</td>
+                                    <td>${escapeHtml(l.request_method || '-')}</td>
+                                    <td style="font-family:monospace;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.path || '-')}</td>
+                                    <td><span style="color:${statusColor};font-weight:bold">${l.status_code}</span></td>
+                                    <td>${l.response_time_ms || '-'}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <p style="color:var(--text-secondary);font-size:12px;margin-top:5px">Показано ${Math.min(30, logs.length)} из ${logs.length} записей</p>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки</p>';
+            }
+        }
+
+        async function loadTopIps() {
+            const container = document.getElementById('top-ips-container');
+            try {
+                const response = await fetch(`${API_BASE}/security/top-ips?hours=24`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const ips = await response.json();
+
+                if (ips.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary); padding: 20px; text-align: center;">Нет IP с ошибками за 24ч</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead><tr><th>IP</th><th>Всего ошибок</th><th>401</th><th>403</th><th>5xx</th><th>Последний</th></tr></thead>
+                        <tbody>
+                            ${ips.map(ip => `
+                                <tr>
+                                    <td style="font-family:monospace">${escapeHtml(ip.ip_address)}</td>
+                                    <td><strong>${ip.error_count}</strong></td>
+                                    <td>${ip.unauthorized_count || 0}</td>
+                                    <td>${ip.forbidden_count || 0}</td>
+                                    <td style="color:${ip.server_error_count > 0 ? 'var(--danger)' : 'inherit'}">${ip.server_error_count || 0}</td>
+                                    <td><small>${new Date(ip.last_seen).toLocaleString()}</small></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки</p>';
+            }
+        }
+
+        async function loadLogs() {
+            loadAdminActions();
+            loadAuditChanges();
+        }
+
+        async function loadAdminActions() {
+            const container = document.getElementById('admin-actions-container');
+            try {
+                const response = await fetch(`${API_BASE}/audit/actions?limit=100`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const logs = await response.json();
+
+                if (logs.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary); padding: 20px; text-align: center;">Нет записей</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead><tr><th>Время</th><th>Админ</th><th>Действие</th><th>Цель</th><th>Детали</th></tr></thead>
                         <tbody>
                             ${logs.map(log => `
                                 <tr>
-                                    <td>${new Date(log.created_at).toLocaleString()}</td>
+                                    <td><small>${new Date(log.created_at).toLocaleString()}</small></td>
                                     <td>${escapeHtml(log.admin_username || 'System')}</td>
                                     <td><span class="status-badge status-online">${escapeHtml(log.action_type)}</span></td>
-                                    <td>${escapeHtml(log.target_type || '-')}: ${escapeHtml(log.target_id || '-')}</td>
-                                    <td style="font-family: monospace; font-size: 12px;">${JSON.stringify(log.details || {})}</td>
+                                    <td>${escapeHtml(log.target_type || '-')} ${escapeHtml(log.target_id || '')}</td>
+                                    <td style="font-family:monospace;font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(JSON.stringify(log.details || {}))}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки</p>';
+            }
+        }
+
+        async function loadAuditChanges() {
+            const container = document.getElementById('audit-changes-container');
+            try {
+                const response = await fetch(`${API_BASE}/audit/changes?limit=100`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const logs = await response.json();
+
+                if (logs.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary); padding: 20px; text-align: center;">Нет записей изменений</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead><tr><th>Время</th><th>Админ</th><th>Действие</th><th>Ресурс</th><th>Старое</th><th>Новое</th></tr></thead>
+                        <tbody>
+                            ${logs.map(log => `
+                                <tr>
+                                    <td><small>${new Date(log.created_at).toLocaleString()}</small></td>
+                                    <td>${escapeHtml(log.admin_username || 'System')}</td>
+                                    <td>${escapeHtml(log.action)}</td>
+                                    <td>${escapeHtml(log.resource_type || '-')}: ${escapeHtml((log.resource_id || '').substring(0, 8))}</td>
+                                    <td style="font-family:monospace;font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--danger)">${log.old_value ? escapeHtml(JSON.stringify(log.old_value).substring(0, 50)) : '-'}</td>
+                                    <td style="font-family:monospace;font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--success)">${log.new_value ? escapeHtml(JSON.stringify(log.new_value).substring(0, 50)) : '-'}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1026,6 +1416,242 @@
                 loadActivePlayers();
             }
         }, 30000);
+
+        // ============================================
+        // MISSIONS MANAGEMENT
+        // ============================================
+
+        async function loadMissions() {
+            const container = document.getElementById('missions-container');
+            container.className = 'loading';
+            container.textContent = 'Загрузка заданий...';
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/admin/missions`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) throw new Error('Ошибка загрузки');
+
+                const data = await response.json();
+                renderMissionsTable(data.missions || []);
+                await loadMissionStats();
+            } catch (error) {
+                container.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки заданий</p>';
+            }
+        }
+
+        async function loadMissionStats() {
+            const container = document.getElementById('missions-stats');
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/admin/missions/stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const stats = data.stats;
+                    container.innerHTML = `
+                        <div class="stat-card" style="flex: 1; min-width: 150px;">
+                            <h3>Всего заданий</h3>
+                            <div class="value">${stats.totalMissions || 0}</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 150px;">
+                            <h3>Активных</h3>
+                            <div class="value" style="color: var(--success);">${stats.activeMissions || 0}</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 150px;">
+                            <h3>Выполнено</h3>
+                            <div class="value" style="color: var(--accent);">${stats.totalCompletions || 0}</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 150px;">
+                            <h3>Игроков с прогрессом</h3>
+                            <div class="value">${stats.playersWithProgress || 0}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+
+        function renderMissionsTable(missions) {
+            const container = document.getElementById('missions-container');
+
+            if (missions.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">Заданий пока нет. Нажмите "Создать задание" чтобы добавить первое.</p>';
+                return;
+            }
+
+            const diffLabels = { easy: '🟢 Лёгкий', medium: '🟡 Средний', hard: '🔴 Сложный', legendary: '🟣 Легендарный' };
+            const typeLabels = { quiz: 'Викторина', flight: 'Полёт', search: 'Поиск', visit: 'Посещение', collect: 'Сбор' };
+
+            container.innerHTML = `
+                <table class="mission-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Тип</th>
+                            <th>Категория</th>
+                            <th>Сложность</th>
+                            <th>Награды</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${missions.map(m => `
+                            <tr>
+                                <td><strong>${escapeHtml(m.title)}</strong></td>
+                                <td>${typeLabels[m.type] || m.type}</td>
+                                <td>${m.category}</td>
+                                <td>${diffLabels[m.difficulty] || m.difficulty}</td>
+                                <td>⭐${m.reward_xp} ⛽${m.reward_fuel}</td>
+                                <td>
+                                    <span class="status-badge ${m.is_active ? 'status-online' : 'status-offline'}">
+                                        ${m.is_active ? 'Активно' : 'Неактивно'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn-edit-small" onclick="editMission('${m.id}')">✏️</button>
+                                    <button class="btn-danger-small" onclick="deleteMission('${m.id}')">🗑️</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function showMissionModal(mission = null) {
+            document.getElementById('mission-modal').style.display = 'block';
+            document.getElementById('mission-modal-title').textContent = mission ? 'Редактировать задание' : 'Создать задание';
+            document.getElementById('mission-edit-id').value = mission ? mission.id : '';
+
+            // Заполнить форму
+            document.getElementById('mission-title').value = mission ? mission.title : '';
+            document.getElementById('mission-description').value = mission ? mission.description : '';
+            document.getElementById('mission-category').value = mission ? mission.category : 'quiz';
+            document.getElementById('mission-type').value = mission ? mission.type : 'quiz';
+            document.getElementById('mission-difficulty').value = mission ? mission.difficulty : 'easy';
+            document.getElementById('mission-question').value = mission ? (mission.question || '') : '';
+            document.getElementById('mission-options').value = mission ? (mission.options ? JSON.stringify(mission.options) : '') : '';
+            document.getElementById('mission-correct').value = mission ? (mission.correct_answer || '') : '';
+            document.getElementById('mission-xp').value = mission ? mission.reward_xp : 0;
+            document.getElementById('mission-fuel').value = mission ? mission.reward_fuel : 0;
+            document.getElementById('mission-metal').value = mission ? mission.reward_metal : 0;
+            document.getElementById('mission-silicon').value = mission ? mission.reward_silicon : 0;
+            document.getElementById('mission-ice').value = mission ? mission.reward_ice : 0;
+            document.getElementById('mission-rare').value = mission ? mission.reward_rare : 0;
+            document.getElementById('mission-active').checked = mission ? mission.is_active : true;
+            document.getElementById('mission-repeatable').checked = mission ? mission.is_repeatable : false;
+        }
+
+        function hideMissionModal() {
+            document.getElementById('mission-modal').style.display = 'none';
+            document.getElementById('mission-form').reset();
+        }
+
+        async function editMission(id) {
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/admin/missions/${id}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    showMissionModal(data.mission);
+                }
+            } catch (error) {
+                showMessage('missions-message', 'Ошибка загрузки задания', 'error');
+            }
+        }
+
+        async function deleteMission(id) {
+            if (!confirm('Удалить это задание?')) return;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/admin/missions/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('missions-message', data.message, 'success');
+                    loadMissions();
+                } else {
+                    showMessage('missions-message', data.error || 'Ошибка удаления', 'error');
+                }
+            } catch (error) {
+                showMessage('missions-message', 'Ошибка соединения', 'error');
+            }
+        }
+
+        // Event Listeners for Missions
+        document.getElementById('create-mission-btn').addEventListener('click', () => showMissionModal());
+        document.getElementById('refresh-missions-btn').addEventListener('click', loadMissions);
+        document.getElementById('mission-modal-cancel').addEventListener('click', hideMissionModal);
+        document.getElementById('mission-modal-overlay').addEventListener('click', hideMissionModal);
+
+        document.getElementById('mission-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('mission-edit-id').value;
+            const missionData = {
+                title: document.getElementById('mission-title').value,
+                description: document.getElementById('mission-description').value,
+                category: document.getElementById('mission-category').value,
+                type: document.getElementById('mission-type').value,
+                difficulty: document.getElementById('mission-difficulty').value,
+                question: document.getElementById('mission-question').value || null,
+                options: null,
+                correct_answer: document.getElementById('mission-correct').value ? parseInt(document.getElementById('mission-correct').value) : null,
+                reward_xp: parseInt(document.getElementById('mission-xp').value),
+                reward_fuel: parseInt(document.getElementById('mission-fuel').value),
+                reward_metal: parseInt(document.getElementById('mission-metal').value),
+                reward_silicon: parseInt(document.getElementById('mission-silicon').value),
+                reward_ice: parseInt(document.getElementById('mission-ice').value),
+                reward_rare: parseInt(document.getElementById('mission-rare').value),
+                is_active: document.getElementById('mission-active').checked ? 1 : 0,
+                is_repeatable: document.getElementById('mission-repeatable').checked ? 1 : 0,
+            };
+
+            // Parse options JSON
+            const optionsStr = document.getElementById('mission-options').value.trim();
+            if (optionsStr) {
+                try {
+                    missionData.options = JSON.parse(optionsStr);
+                } catch (e) {
+                    showMessage('missions-message', 'Ошибка в формате вариантов ответа (должен быть JSON массив)', 'error');
+                    return;
+                }
+            }
+
+            try {
+                const url = id
+                    ? `${apiBaseUrl}/api/admin/missions/${id}`
+                    : `${apiBaseUrl}/api/admin/missions`;
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify(missionData),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('missions-message', data.message, 'success');
+                    hideMissionModal();
+                    loadMissions();
+                } else {
+                    showMessage('missions-message', data.error || 'Ошибка сохранения', 'error');
+                }
+            } catch (error) {
+                showMessage('missions-message', 'Ошибка соединения', 'error');
+            }
+        });
     </script>
 </body>
 </html>

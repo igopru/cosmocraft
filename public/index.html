@@ -5,23 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CosmoCraft - Вход</title>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
             font-family: Arial, sans-serif;
             background-color: #000;
             color: #fff;
-            overflow-x: hidden;
+            overflow: hidden;
         }
-        .container {
-            position: relative;
-            min-height: 100vh;
+        
+        /* Экран авторизации */
+        #auth-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            background-color: #000;
+            z-index: 1000;
         }
-        .form-container {
+        
+        #auth-screen.hidden {
+            display: none;
+        }
+        
+        .login-box {
             background-color: rgba(255, 255, 255, 0.02);
             padding: 40px 30px;
             border-radius: 12px;
@@ -33,27 +48,32 @@
             position: relative;
             z-index: 10;
         }
-        .form-container h1 {
+        
+        .login-box h1 {
             margin-bottom: 10px;
             text-align: center;
             color: #ffd700;
             font-size: 32px;
         }
+        
         .subtitle {
             text-align: center;
             color: #888;
             margin-bottom: 30px;
             font-size: 14px;
         }
+        
         .form-group {
             margin-bottom: 20px;
         }
-        label {
+        
+        .form-group label {
             display: block;
             margin-bottom: 8px;
             color: #888;
         }
-        input {
+        
+        .form-group input {
             width: 100%;
             padding: 12px 15px;
             border: none;
@@ -61,16 +81,14 @@
             background-color: rgba(255, 255, 255, 0.03);
             color: #fff;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            box-sizing: border-box;
         }
-        input:focus {
+        
+        .form-group input:focus {
             outline: 2px solid #44aaff;
             outline-offset: 2px;
         }
-        input.error {
-            border: 1px solid #ff4444;
-        }
-        button {
+        
+        .btn-login {
             width: 100%;
             padding: 12px;
             background-color: #111;
@@ -81,44 +99,54 @@
             cursor: pointer;
             transition: 0.3s;
         }
-        button:hover {
+        
+        .btn-login:hover {
             background-color: #222;
         }
-        button:disabled {
+        
+        .btn-login:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
+        
+        .links {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+        }
+        
+        .links a {
+            color: #44aaff;
+            text-decoration: none;
+        }
+        
+        .links a:hover {
+            text-decoration: underline;
+        }
+        
         .footer {
             margin-top: 20px;
             text-align: center;
             font-size: 12px;
             color: #666;
         }
-        .error-message {
+        
+        .error-msg {
             color: #ff4444;
             font-size: 13px;
             margin-top: 10px;
             text-align: center;
             display: none;
         }
-        .success-message {
+        
+        .success-msg {
             color: #44ff88;
             font-size: 14px;
             margin-top: 15px;
             text-align: center;
         }
-        .link {
-            color: #44aaff;
-            text-decoration: none;
-        }
-        .link:hover {
-            text-decoration: underline;
-        }
-        .links {
-            margin-top: 15px;
-            text-align: center;
-            font-size: 13px;
-        }
+        
+        /* Звёзды на фоне */
         .stars {
             position: absolute;
             top: 0;
@@ -126,8 +154,8 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            overflow: hidden;
         }
+        
         .stars canvas {
             position: absolute;
             top: 0;
@@ -135,17 +163,49 @@
             width: 100%;
             height: 100%;
         }
-        #game-ui {
+        
+        /* Игровой экран */
+        #game-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: none;
+            z-index: 1;
+        }
+        
+        #game-screen.active {
+            display: block;
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
     </style>
+    
+    <!-- Import map для Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.183.1/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.183.1/examples/jsm/"
+        }
+    }
+    </script>
 </head>
 <body>
-    <div class="container">
-        <div class="form-container" id="loginFormContainer">
+    <!-- Экран авторизации -->
+    <div id="auth-screen">
+        <div class="login-box">
             <h1>CosmoCraft</h1>
             <p class="subtitle">Космическая стратегия</p>
-            <form id="loginForm">
+            
+            <form id="login-form">
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" required placeholder="your.email@example.com">
@@ -154,42 +214,40 @@
                     <label for="password">Пароль</label>
                     <input type="password" id="password" required placeholder="••••••••">
                 </div>
-                <button type="submit" id="loginBtn">Войти</button>
-                <div id="loginMessage"></div>
+                <button type="submit" id="login-btn" class="btn-login">Войти</button>
+                <div id="login-msg" class="error-msg"></div>
             </form>
+            
             <div class="links">
-                <a href="/registration.html" class="link">Нет аккаунта? Зарегистрироваться</a> | 
-                <a href="/password-reset.html" class="link">Забыли пароль?</a>
+                <a href="/registration.html">Нет аккаунта? Зарегистрироваться</a> | 
+                <a href="/password-reset.html">Забыли пароль?</a>
             </div>
             <div class="footer">© 2026 CosmoCraft</div>
         </div>
-
-        <!-- Игровой интерфейс (скрыт по умолчанию) -->
-        <div id="game-ui">
-            <!-- Здесь будет игра -->
-        </div>
-
         <div class="stars">
             <canvas id="starfield"></canvas>
         </div>
     </div>
 
+    <!-- Игровой экран -->
+    <div id="game-screen">
+        <canvas id="game-canvas"></canvas>
+    </div>
+
 <script>
     // Звёздное небо
-    const canvas = document.getElementById('starfield');
-    const ctx = canvas.getContext('2d');
+    const starCanvas = document.getElementById('starfield');
+    const starCtx = starCanvas.getContext('2d');
 
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    function resizeStarCanvas() {
+        starCanvas.width = window.innerWidth;
+        starCanvas.height = window.innerHeight;
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    resizeStarCanvas();
+    window.addEventListener('resize', resizeStarCanvas);
 
     const stars = [];
-    const STAR_COUNT = 200;
-
-    for (let i = 0; i < STAR_COUNT; i++) {
+    for (let i = 0; i < 200; i++) {
         stars.push({
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
@@ -198,142 +256,155 @@
     }
 
     function drawStars() {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#fff';
+        starCtx.fillStyle = '#000';
+        starCtx.fillRect(0, 0, starCanvas.width, starCanvas.height);
+        starCtx.fillStyle = '#fff';
         for (const star of stars) {
-            ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.size, star.size);
+            starCtx.fillRect(Math.floor(star.x), Math.floor(star.y), star.size, star.size);
         }
     }
     drawStars();
 
-    // Логика входа
-    const loginForm = document.getElementById('loginForm');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginMessage = document.getElementById('loginMessage');
-    const loginFormContainer = document.getElementById('loginFormContainer');
-    const gameUI = document.getElementById('game-ui');
+    // Элементы
+    const authScreen = document.getElementById('auth-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const loginForm = document.getElementById('login-form');
+    const loginBtn = document.getElementById('login-btn');
+    const loginMsg = document.getElementById('login-msg');
 
     // Проверка сохранённой сессии
-    const savedToken = localStorage.getItem('accessToken');
-    if (savedToken) {
-        validateSavedToken();
-    }
-
-    async function validateSavedToken() {
-        try {
-            const response = await fetch('/api/auth/me', {
-                headers: {
-                    'Authorization': `Bearer ${savedToken}`
+    window.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            try {
+                const resp = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success) {
+                        showGame();
+                        return;
+                    }
                 }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    // Токен валиден, показываем игру
-                    showGameUI(data.player.username);
+                
+                // Пробуем обновить токен
+                const refresh = localStorage.getItem('refreshToken');
+                if (refresh) {
+                    const resp2 = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken: refresh })
+                    });
+                    if (resp2.ok) {
+                        const data2 = await resp2.json();
+                        if (data2.success) {
+                            localStorage.setItem('accessToken', data2.tokens.accessToken);
+                            localStorage.setItem('refreshToken', data2.tokens.refreshToken);
+                            showGame();
+                            return;
+                        }
+                    }
                 }
+                
+                // Сессия невалидна
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+            } catch (e) {
+                console.error('Ошибка проверки сессии:', e);
             }
-        } catch (error) {
-            console.error('Ошибка проверки токена:', error);
         }
-    }
+    });
 
-    loginForm.addEventListener('submit', async function(e) {
+    // Обработка формы входа
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
+        
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
-
+        
+        loginMsg.style.display = 'none';
         loginBtn.disabled = true;
         loginBtn.textContent = 'Вход...';
-        loginMessage.innerHTML = '';
-
+        
         try {
-            const response = await fetch('/api/auth/login', {
+            const resp = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                // Сохраняем токены
+            
+            const data = await resp.json();
+            
+            if (resp.ok && data.success) {
                 localStorage.setItem('accessToken', data.tokens.accessToken);
                 localStorage.setItem('refreshToken', data.tokens.refreshToken);
-
-                loginMessage.innerHTML = '<div class="success-message">✅ Вход успешен! Переход в игру...</div>';
-
-                // Получаем информацию о игроке
-                setTimeout(async () => {
-                    try {
-                        const meResponse = await fetch('/api/auth/me', {
-                            headers: {
-                                'Authorization': `Bearer ${data.tokens.accessToken}`
-                            }
-                        });
-
-                        if (meResponse.ok) {
-                            const meData = await meResponse.json();
-                            if (meData.success) {
-                                showGameUI(meData.player.username);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Ошибка получения информации:', error);
-                        showGameUI('Pilot');
-                    }
+                
+                loginMsg.className = 'success-msg';
+                loginMsg.style.display = 'block';
+                loginMsg.textContent = '✅ Вход успешен! Загрузка...';
+                
+                setTimeout(() => {
+                    showGame();
                 }, 500);
             } else {
-                let message = data.error || 'Ошибка входа';
-
+                let msg = data.error || 'Ошибка входа';
                 if (data.requiresEmailVerification) {
-                    message = `⚠️ ${message}. <a href="/verification.html?email=${encodeURIComponent(email)}" class="link">Подтвердить email</a>`;
+                    msg = `Подтвердите email. <a href="/verification.html?email=${encodeURIComponent(email)}">Подтвердить</a>`;
                 }
-
-                loginMessage.innerHTML = `<div class="error-message" style="display:block">${message}</div>`;
+                loginMsg.className = 'error-msg';
+                loginMsg.style.display = 'block';
+                loginMsg.innerHTML = msg;
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
             }
-        } catch (error) {
-            loginMessage.innerHTML = '<div class="error-message" style="display:block">Ошибка соединения с сервером</div>';
-        } finally {
+        } catch (err) {
+            loginMsg.className = 'error-msg';
+            loginMsg.style.display = 'block';
+            loginMsg.textContent = 'Ошибка соединения с сервером';
             loginBtn.disabled = false;
             loginBtn.textContent = 'Войти';
         }
     });
 
-    function showGameUI(username) {
-        loginFormContainer.style.display = 'none';
-        gameUI.style.display = 'block';
-        document.title = `CosmoCraft - ${username}`;
+    // Показать игру
+    function showGame() {
+        authScreen.classList.add('hidden');
+        gameScreen.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        console.log('Game screen activated');
+        
+        // Загружаем игру динамически
+        loadGame();
+    }
 
-        // Здесь можно инициализировать игру
-        console.log('Game UI shown for:', username);
-
-        // Если игра уже импортирована, запускаем её
-        if (window.game && typeof window.game.start === 'function') {
-            window.game.start();
+    // Загрузка игры
+    async function loadGame() {
+        try {
+            console.log('Loading game module...');
+            
+            // Динамический импорт
+            const module = await import('/dist/client/main.js');
+            const CosmoCraftGame = module.CosmoCraftGame;
+            
+            if (!CosmoCraftGame) {
+                console.error('CosmoCraftGame not found in module');
+                return;
+            }
+            
+            console.log('Creating game instance...');
+            window.game = new CosmoCraftGame();
+            
+            console.log('Starting game...');
+            await window.game.start();
+            
+            console.log('Game started successfully');
+        } catch (error) {
+            console.error('Ошибка загрузки игры:', error);
+            console.error('Stack:', error.stack);
         }
     }
-</script>
-
-<!-- Подключаем игру -->
-<script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
-        }
-    }
-</script>
-
-<script type="module">
-    import { CosmoCraftGame } from '/dist/client/main.js';
-
-    window.game = new CosmoCraftGame();
 </script>
 
 </body>

@@ -1,4 +1,7 @@
 {
+  "name": "cosmocraft",
+  "version": "0.6.1",
+  "description": "Многопользовательская космическая стратегия с воксельной графикой, системой заданий и админ-панелью",
   "scripts": {
     "migrate": "node scripts/migrate-json-to-mysql.cjs",
     "db:init": "node scripts/database/init-database.js",

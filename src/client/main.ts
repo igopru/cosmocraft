@@ -15,6 +15,7 @@ import { StationModule } from './StationModule.js';
 import { StationManager } from './StationManager.js';
 import { ShipController } from './ShipController.js';
 import { StationShop, StationInfo } from './StationShop.js';
+import { BaseStation } from './BaseStation.js';
 
 export class CosmoCraftGame {
     private scene: THREE.Scene;
@@ -33,6 +34,7 @@ export class CosmoCraftGame {
     private modules: StationModule[] = [];
     private asteroids: THREE.Group[] = [];
     private stationManager: StationManager;
+    private baseStation: BaseStation;
     private shipController: ShipController;
     private isFPVMode: boolean = true; // По умолчанию включен полёт
     private fpvUI: HTMLElement | null = null;
@@ -53,7 +55,6 @@ export class CosmoCraftGame {
         this.camera.position.set(10, 10, 20);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -62,24 +63,29 @@ export class CosmoCraftGame {
 
         // Определяем адрес WebSocket сервера
         const urlParams = new URLSearchParams(window.location.search);
-        const serverHost = urlParams.get('server') || window.location.hostname;
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        
+        let serverHost = urlParams.get('server') || window.location.hostname;
+        let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
         // Определяем порт и путь
         let wsPort = urlParams.get('ws_port');
-        let wsPath = urlParams.get('ws_path') || '';
-        
+        let wsPath = urlParams.get('ws_path') || '/ws';  // По умолчанию /ws
+
         // Если не указан порт явно, определяем автоматически
         if (!wsPort) {
-            if (wsPath) {
-                // Если есть ws_path, значит через nginx - порт не нужен (443 или 80)
+            if (wsPath && wsPath !== '/ws') {
+                // Если есть кастомный ws_path, значит через nginx - порт не нужен
                 wsPort = '';
+            } else if (window.location.hostname === 'cosmocraft.rupru.ru') {
+                // Продакшен сервер - WebSocket через nginx на /ws
+                wsPort = '';
+                wsPath = '/ws';
             } else if (window.location.protocol === 'https:') {
                 // HTTPS без ws_path - используем 443
                 wsPort = '';
             } else {
                 // HTTP без ws_path - локальная разработка, порт 8080
                 wsPort = '8080';
+                wsPath = '/ws';
             }
         }
         
@@ -93,15 +99,27 @@ export class CosmoCraftGame {
         this.wsClient = new WebSocketClient(wsUrl);
         this.hud = new HUD();
         this.buildMenu = new BuildMenu(this.wsClient, this);
-        this.playerName = localStorage.getItem('playerName') || 'Gora';
+        // Запрашиваем имя пилота если не сохранено
+        const savedName = localStorage.getItem('playerName');
+        if (savedName) {
+            this.playerName = savedName;
+        } else {
+            const name = prompt('Введите имя пилота:', 'Pilot');
+            this.playerName = name && name.trim() ? name.trim() : 'Pilot';
+            localStorage.setItem('playerName', this.playerName);
+        }
         this.star = new VoxelStar(Math.floor(Math.random() * 1000000));
-        this.stationManager = new StationManager(this.scene, this.camera);
+        this.baseStation = new BaseStation(this.scene); // Орбита вычисляется автоматически из blueprint
         this.shipController = new ShipController(
             this.camera,
             this.scene,
             this.renderer,
             new THREE.Vector3(0, 500, 0) // Спавн над звездой на высоте 500 единиц
         );
+        this.stationManager = new StationManager(this.scene, this.camera, this.shipController.getShip());
+        this.shipController.setBaseStation(this.baseStation);
+        this.shipController.setStationManager(this.stationManager);
+        this.shipController.setWebSocketClient(this.wsClient);
 
         // Callback для обновления статуса корабля в HUD
         this.shipController.setOnStatusUpdate((status) => {
@@ -110,6 +128,7 @@ export class CosmoCraftGame {
 
         // Инициализация магазина станций
         this.stationShop = new StationShop();
+        this.stationShop.setShipController(this.shipController);
 
         // Глобальный обработчик клавиш
         this.setupGlobalKeyHandler();
@@ -120,11 +139,18 @@ export class CosmoCraftGame {
         this.wsClient.on('playerData', (data) => {
             console.log('👤 Данные игрока:', data);
             this.playerIndex = data.playerIndex;
+            this.playerName = data.playerName || this.playerName;
+            localStorage.setItem('playerName', this.playerName);
             this.hud.showMessage(`Добро пожаловать, ${data.playerName}!`);
+            this.shipController.setPlayerName(this.playerName);
+            // Загружаем cargo с сервера при входе
+            if (data.cargo) {
+                this.shipController.setCargo(data.cargo);
+            }
         });
 
         this.wsClient.on('asteroidsData', (data) => {
-            console.log('☄️ Получено астероидов:', data.length);
+            // console.log('☄️ Получено астероидов:', data.length);
             this.renderAsteroids(data);
         });
 
@@ -143,9 +169,27 @@ export class CosmoCraftGame {
       });
 
       this.wsClient.on('asteroidsData', (data) => {
-        console.log('☄️ Получено астероидов:', data.length);
+        // console.log('☄️ Получено астероидов:', data.length);
         this.renderAsteroids(data);
       });
+
+      // Вход как пилот после установки соединения
+      const attemptLogin = () => {
+        const name = this.playerName || localStorage.getItem('playerName');
+        if (name) {
+          this.wsClient.loginPlayer(name);
+        } else {
+          // Ждём пока имя появится
+          setTimeout(attemptLogin, 500);
+        }
+      };
+
+      // Проверяем подключение и логинимся
+      if ((this.wsClient as any).connected) {
+        attemptLogin();
+      } else {
+        this.wsClient.on('connect', () => attemptLogin());
+      }
     }
     
     public async start() {
@@ -159,9 +203,19 @@ export class CosmoCraftGame {
     
     private init() {
         console.log('Initializing game');
+
+        // Добавляем рендерер в игровой контейнер если есть, иначе в body
+        const gameContainer = document.getElementById('game-screen') || document.body;
+        gameContainer.appendChild(this.renderer.domElement);
+        this.renderer.domElement.id = 'game-canvas';
+        this.renderer.domElement.style.position = 'absolute';
+        this.renderer.domElement.style.top = '0';
+        this.renderer.domElement.style.left = '0';
+        this.renderer.domElement.style.width = '100%';
+        this.renderer.domElement.style.height = '100%';
         
-        // Добавляем рендерер в DOM
-        document.body.appendChild(this.renderer.domElement);
+        // Устанавливаем размер после добавления в DOM
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
         
         // Добавляем звезду
         this.scene.add(this.star.getMesh());
@@ -277,6 +331,12 @@ export class CosmoCraftGame {
         // Обновляем звезду (анимация ядра, короны, частиц)
         this.star.update(0.016);
 
+        // Обновляем базовую станцию (орбита вокруг звезды)
+        this.baseStation.update(delta);
+
+        // Обновляем менеджер станций (строительство, отталкивание)
+        this.stationManager.update(delta);
+
         // Обновляем астероиды (вращение только видимых)
         this.visibleAsteroids.forEach(asteroid => {
             const speed = (asteroid as any).userData?.rotationSpeed;
@@ -309,15 +369,15 @@ export class CosmoCraftGame {
     }
 
     private renderAsteroids(asteroidsData: any[]) {
-        console.log('🎨 Отрисовка астероидов:', asteroidsData.length);
-        
+        // console.log('🎨 Отрисовка астероидов:', asteroidsData.length);
+
         // Сохраняем все данные астероидов
         this.allAsteroidsData = asteroidsData;
         
         // Обновляем видимые астероиды
         this.updateVisibleAsteroids();
         
-        console.log(`✅ Отрисовано астероидов: ${this.visibleAsteroids.size} из ${asteroidsData.length}`);
+        // console.log(`✅ Отрисовано астероидов: ${this.visibleAsteroids.size} из ${asteroidsData.length}`);
     }
 
     /**
@@ -498,7 +558,7 @@ export class CosmoCraftGame {
                     // Закрываем меню
                     this.hideStationMenu();
                     // Включаем режим размещения
-                    await this.stationManager.enablePlacementMode(filename, (success: boolean) => {
+                    await this.stationManager.enablePlacementMode(filename, this.playerName, (success: boolean) => {
                         if (success) {
                             console.log('✅ Станция размещена');
                         } else {

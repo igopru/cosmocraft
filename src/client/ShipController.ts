@@ -1,5 +1,9 @@
 // src/client/ShipController.ts
 import * as THREE from 'three';
+import { MissionUI } from '../ui/MissionUI.js';
+import { GameAudioClient } from './audio/GameAudioClient.js';
+import { BaseStation } from './BaseStation.js';
+import { StationServiceUI } from './StationServiceUI.js';
 
 export interface ResourceVoxel {
     id: number;
@@ -86,16 +90,31 @@ export class ShipController {
     private laserActive: boolean = false;
     private currentMissile: string = 'None';
 
+    // Аудио
+    private audio: GameAudioClient;
+    private audioBtn: HTMLElement | null = null;
+    private audioEnabled: boolean = false;
+
+    // Базовая станция
+    private baseStation: BaseStation | null = null;
+    private stationManager: any = null;
+    private wsClient: any = null; // Для отправки cargo на сервер
+    private stationUI: StationServiceUI;
+    private stationServiceOpen: boolean = false;
+    private nearStation: boolean = false;
+    private isFollowingStation: boolean = false;
+
     // Щиты и столкновения
     private shields: number = 100; // 100%
     private collisionCooldown: boolean = false;
 
     // Груз и ресурсы
-    private cargo: { metal: number; silicon: number; ice: number; rare: number } = {
+    private cargo: { metal: number; silicon: number; ice: number; rare: number; fuel: number } = {
         metal: 0,
         silicon: 0,
         ice: 0,
-        rare: 0
+        rare: 0,
+        fuel: 0
     };
     private resourceParticles: ResourceParticle[] = [];
     private nextParticleId: number = 0;
@@ -122,6 +141,10 @@ export class ShipController {
     // Выделение объекта и автонаведение
     private selectedObject: THREE.Object3D | null = null;
     private selectedObjectMarker: THREE.Mesh | null = null;
+
+    // Панель заданий
+    private missionUI: MissionUI;
+    private pilotDisplayName: string = 'Unknown';
     private isAutoTargeting: boolean = false;
 
     // Лазерная визуализация
@@ -167,6 +190,30 @@ export class ShipController {
         this.camera = camera;
         this.scene = scene;
         this.renderer = renderer;
+        this.audio = new GameAudioClient();
+        this.stationUI = new StationServiceUI();
+        this.stationUI.setOnTradeComplete((data) => {
+            // Обновляем cargo
+            if (data.cargo) {
+                this.cargo.metal = data.cargo.metal || 0;
+                this.cargo.silicon = data.cargo.silicon || 0;
+                this.cargo.ice = data.cargo.ice || 0;
+                this.cargo.rare = data.cargo.rare || 0;
+                this.cargo.fuel = data.cargo.fuel || 0;
+                // Вода — отдельное поле на ShipController
+                if (data.cargo.water !== undefined) this.water = data.cargo.water;
+            }
+            // Обновляем статусы корабля
+            if (data.stats) {
+                if (data.stats.shields !== undefined) this.shields = data.stats.shields;
+                if (data.stats.radiation !== undefined) this.radiation = data.stats.radiation;
+                if (data.stats.energy !== undefined) this.energy = data.stats.energy;
+                if (data.stats.energyCapacity !== undefined) this.energyCapacity = data.stats.energyCapacity;
+                if (data.stats.waterCapacity !== undefined) this.waterCapacity = data.stats.waterCapacity;
+            }
+            console.log('🏪 [HUD UPDATE] cargo:', JSON.stringify(this.cargo), 'water:', this.water, 'energy:', this.energy.toFixed(1), 'radiation:', this.radiation.toFixed(1));
+            this.notifyStatusUpdate();
+        });
 
         // Создаём группу корабля
         this.ship = new THREE.Group();
@@ -188,14 +235,17 @@ export class ShipController {
         this.createLaserVisuals();
         this.createEnergyHUD();
         this.createAuraOverlay();
+        
+        // Инициализация панели заданий
+        this.missionUI = new MissionUI();
 
         // НЕ добавляем камеру как дочерний объект - будем копировать матрицу явно
         // Это предотвращает авто-выравнивание камеры движком Three.js
         // this.ship.add(this.camera);  // Закомментировано!
 
-        // Устанавливаем камеру в позицию корабля
-        // Камера смотрит вперёд по локальной оси -Z
-        this.camera.position.set(0, 0, 0);
+        // Устанавливаем камеру в позицию корабля (не в 0,0,0!)
+        // Камера должна быть там же, где и корабль
+        this.camera.position.copy(this.shipPosition);
 
         // ВАЖНО: Отключаем авто-выравнивание камеры
         // Камера должна быть "тупой" - никаких lookAt, никаких up.set()
@@ -223,10 +273,50 @@ export class ShipController {
         if (event.button !== 0) return; // Только левая кнопка
 
         if (this.hoveredObject) {
-            this.selectObject(this.hoveredObject);
+            // Проверяем, кликнули ли по базовой станции
+            const isStation = this.isObjectStation(this.hoveredObject);
+            if (isStation && this.baseStation) {
+                // Клик по станции — включить следование за станцией
+                this.startFollowStation();
+            } else {
+                this.selectObject(this.hoveredObject);
+            }
         } else {
             this.deselectObject();
+            this.stopFollowStation();
         }
+    }
+
+    /** Проверить, является ли объект базовой станцией */
+    private isObjectStation(obj: THREE.Object3D): boolean {
+        // Проверяем сам объект и его родителей
+        let current: THREE.Object3D | null = obj;
+        while (current) {
+            if (current.name === 'baseStation' || current.userData.isStation) return true;
+            current = current.parent;
+        }
+        // Проверяем, принадлежит ли объект к группе станции
+        if (this.baseStation) {
+            const stationGroup = this.baseStation.getStationGroup();
+            let check: THREE.Object3D | null = obj;
+            while (check) {
+                if (check === stationGroup) return true;
+                check = check.parent;
+            }
+        }
+        return false;
+    }
+
+    /** Начать следование за станцией */
+    private startFollowStation() {
+        if (!this.baseStation) return;
+        this.isFollowingStation = true;
+        console.log('🛰️ Следование за базовой станцией — V для обслуживания');
+    }
+
+    /** Остановить следование за станцией */
+    private stopFollowStation() {
+        this.isFollowingStation = false;
     }
 
     // Выделение объекта
@@ -337,9 +427,9 @@ export class ShipController {
 
         // Отладка: выводим количество пересечений
         if (intersects.length > 0) {
-            console.log('🎯 Пересечения:', intersects.length);
-            console.log('  Объект:', intersects[0].object.name || 'без имени');
-            console.log('  userData:', intersects[0].object.userData);
+            // console.log('🎯 Пересечения:', intersects.length);
+            // console.log('  Объект:', intersects[0].object.name || 'без имени');
+            // console.log('  userData:', intersects[0].object.userData);
         }
 
         if (intersects.length > 0) {
@@ -349,11 +439,11 @@ export class ShipController {
                 
                 // Проверяем сам объект и его родителей
                 while (obj) {
-                    console.log('  Проверка:', obj.name, obj.userData);
+                    // console.log('  Проверка:', obj.name, obj.userData);
                     
                     // Звезда (по имени)
                     if (obj.name === 'star') {
-                        console.log('✅ Найдена звезда!');
+                        // console.log('✅ Найдена звезда!');
                         this.hoveredObject = obj;
                         this.mouseWorldPosition = intersect.point.clone();
                         return;
@@ -361,7 +451,7 @@ export class ShipController {
                     
                     // Станция (по userData)
                     if (obj.userData?.isStation) {
-                        console.log('✅ Найдена станция!');
+                        // console.log('✅ Найдена станция!');
                         this.hoveredObject = obj;
                         this.mouseWorldPosition = intersect.point.clone();
                         return;
@@ -369,7 +459,7 @@ export class ShipController {
                     
                     // Астероид (по типу)
                     if (obj.userData?.type) {
-                        console.log('✅ Найден астероид!');
+                        // console.log('✅ Найден астероид!');
                         this.hoveredObject = obj;
                         this.mouseWorldPosition = intersect.point.clone();
                         return;
@@ -380,7 +470,7 @@ export class ShipController {
             }
 
             // Если ничего не нашли
-            console.log('❌ Ничего не найдено');
+            // console.log('❌ Ничего не найдено');
             this.hoveredObject = null;
             this.mouseWorldPosition = null;
         } else {
@@ -510,6 +600,33 @@ export class ShipController {
             </div>
         `;
         document.body.appendChild(this.radiationHUD);
+
+        // Кнопка звука (справа вверху, рядом с радиацией)
+        this.audioBtn = document.createElement('div');
+        this.audioBtn.id = 'audio-toggle';
+        this.audioBtn.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 230px;
+            width: 36px;
+            height: 36px;
+            background: rgba(0, 50, 100, 0.7);
+            border: 2px solid #4488ff;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            user-select: none;
+            transition: all 0.2s;
+        `;
+        this.audioBtn.textContent = '🔊';
+        this.audioBtn.title = 'Вкл/Выкл звук';
+        this.audioBtn.onclick = () => this.toggleAudio();
+        document.body.appendChild(this.audioBtn);
 
         // Зарядка от звезды
         this.starChargeHUD = document.createElement('div');
@@ -680,6 +797,12 @@ export class ShipController {
             case 'KeyI':
                 this.showObjectInfo();
                 break;
+            case 'KeyQ':
+                this.toggleMissionPanel();
+                break;
+            case 'KeyV':
+                this.toggleStationService();
+                break;
             case 'KeyT':
                 this.showShipInfo();
                 break;
@@ -692,7 +815,7 @@ export class ShipController {
             case 'Backspace':
                 this.zeroSpeed();
                 break;
-            case 'Tab':
+            case 'KeyX':
                 this.toggleTurbo();
                 break;
             case 'KeyJ':
@@ -724,13 +847,13 @@ export class ShipController {
 
     private increaseThrottle() {
         this.throttle = Math.min(100, this.throttle + 10);
-        console.log(`📈 Тяга: ${this.throttle}%`);
+        // console.log(`📈 Тяга: ${this.throttle}%`);
         this.notifyStatusUpdate();
     }
 
     private decreaseThrottle() {
         this.throttle = Math.max(0, this.throttle - 10);
-        console.log(`📉 Тяга: ${this.throttle}%`);
+        // console.log(`📉 Тяга: ${this.throttle}%`);
         this.notifyStatusUpdate();
     }
 
@@ -738,25 +861,25 @@ export class ShipController {
         this.throttle = 0;
         this.speed = 0;
         this.velocity.set(0, 0, 0);
-        console.log('🛑 Скорость сброшена');
+        // console.log('🛑 Скорость сброшена');
         this.notifyStatusUpdate();
     }
 
     private toggleTurbo() {
         this.turboMode = !this.turboMode;
-        console.log(`⚡ Турбо: ${this.turboMode ? 'ВКЛ' : 'ВЫКЛ'}`);
+        // console.log(`⚡ Турбо: ${this.turboMode ? 'ВКЛ' : 'ВЫКЛ'}`);
         this.notifyStatusUpdate();
     }
 
     private toggleSETA() {
         this.setaMode = !this.setaMode;
-        console.log(`⏱️ S.E.T.A: ${this.setaMode ? 'ВКЛ' : 'ВЫКЛ'}`);
+        // console.log(`⏱️ S.E.T.A: ${this.setaMode ? 'ВКЛ' : 'ВЫКЛ'}`);
         this.notifyStatusUpdate();
     }
 
     private toggleSETABoost() {
         this.setaBoost = !this.setaBoost;
-        console.log(`⏱️⚡ S.E.T.A Boost: ${this.setaBoost ? 'ВКЛ' : 'ВЫКЛ'}`);
+        // console.log(`⏱️⚡ S.E.T.A Boost: ${this.setaBoost ? 'ВКЛ' : 'ВЫКЛ'}`);
         this.notifyStatusUpdate();
     }
 
@@ -764,7 +887,7 @@ export class ShipController {
 
     private toggleCargoBay() {
         this.cargoBayOpen = !this.cargoBayOpen;
-        console.log(`🚪 Грузовой люк: ${this.cargoBayOpen ? 'ОТКРЫТ' : 'ЗАКРЫТ'}`);
+        // console.log(`🚪 Грузовой люк: ${this.cargoBayOpen ? 'ОТКРЫТ' : 'ЗАКРЫТ'}`);
         
         // Если открыли люк - пробуем собрать nearby ресурсы
         if (this.cargoBayOpen) {
@@ -778,7 +901,7 @@ export class ShipController {
 
     private deploySatellite() {
         if (this.cargo.metal < 50) {
-            console.log('❌ Недостаточно металла (нужно 50)');
+            // console.log('❌ Недостаточно металла (нужно 50)');
             return;
         }
 
@@ -803,13 +926,13 @@ export class ShipController {
         this.scene.add(satellite);
         this.satellites.push(satellite);
 
-        console.log(`🛰️ Спутник развёрнут! Всего: ${this.satellitesDeployed}`);
+        // console.log(`🛰️ Спутник развёрнут! Всего: ${this.satellitesDeployed}`);
         this.notifyStatusUpdate();
     }
 
     private recallSatellites() {
         if (this.satellites.length === 0) {
-            console.log('ℹ️ Нет развёрнутых спутников');
+            // console.log('ℹ️ Нет развёрнутых спутников');
             return;
         }
 
@@ -827,7 +950,7 @@ export class ShipController {
         // Возвращаем часть ресурсов
         this.cargo.metal += count * 25; // Возвращаем 50% металла
 
-        console.log(`🛰️ Спутники отозваны: ${count} шт. Возвращено 25 металла за каждый`);
+        // console.log(`🛰️ Спутники отозваны: ${count} шт. Возвращено 25 металла за каждый`);
         this.notifyStatusUpdate();
     }
 
@@ -887,7 +1010,7 @@ export class ShipController {
         };
 
         this.resourceParticles.push(particleData);
-        console.log(`✨ Создана частица ресурса: ${type}`);
+        // console.log(`✨ Создана частица ресурса: ${type}`);
     }
 
     private updateResourceParticles(deltaTime: number) {
@@ -971,8 +1094,10 @@ export class ShipController {
 
         this.resourceVoxels.splice(index, 1);
 
-        console.log(`📦 Получен ресурс: ${voxel.type}`);
         this.notifyStatusUpdate();
+        
+        // Отправляем обновлённый cargo на сервер
+        this.syncCargoToServer();
     }
 
     private handleVoxelCollision(voxel: ResourceVoxel) {
@@ -990,8 +1115,8 @@ export class ShipController {
             this.resourceVoxels.splice(index, 1);
         }
 
-        console.log(`💥 Столкновение с вокселем! Щиты: ${this.shields}%`);
         this.notifyStatusUpdate();
+        this.syncCargoToServer();
     }
 
     private collectResource(particle: ResourceParticle, index: number) {
@@ -1010,8 +1135,8 @@ export class ShipController {
 
         this.resourceParticles.splice(index, 1);
 
-        console.log(`📦 Получен ресурс: ${particle.type} (+${particle.type === 'metal' ? 10 : particle.type === 'silicon' ? 8 : particle.type === 'ice' ? 12 : 3})`);
         this.notifyStatusUpdate();
+        this.syncCargoToServer();
     }
 
     private collectNearbyResources() {
@@ -1025,13 +1150,17 @@ export class ShipController {
                 }
             }
         }
+        // Синхронизируем cargo после массового сбора
+        if (this.resourceParticles.length > 0) {
+            this.syncCargoToServer();
+        }
     }
 
     // === Остальные методы ===
 
     private toggleTacticalNav() {
         this.tacticalNavActive = !this.tacticalNavActive;
-        console.log(`🗺️ Tactical Navigation: ${this.tacticalNavActive ? 'ВКЛ' : 'ВЫКЛ'}`);
+        // console.log(`🗺️ Tactical Navigation: ${this.tacticalNavActive ? 'ВКЛ' : 'ВЫКЛ'}`);
     }
 
     private showObjectInfo() {
@@ -1276,268 +1405,189 @@ export class ShipController {
         this.showPauseMenu();
     }
 
-    // Показ меню выбора станции
-    private showStationSelectionMenu() {
-        const stationEl = document.createElement('div');
-        stationEl.id = 'station-selection-modal';
-        stationEl.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 10002;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        `;
-
-        stationEl.innerHTML = `
-            <div style="
-                background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
-                border: 3px solid #44aaff;
-                border-radius: 20px;
-                padding: 30px;
-                color: #fff;
-                font-family: 'Courier New', monospace;
-                font-size: 14px;
-                min-width: 700px;
-                max-width: 900px;
-                box-shadow: 0 0 50px rgba(68, 170, 255, 0.5);
-            ">
-                <h1 style="color: #44aaff; font-size: 28px; margin-bottom: 20px; text-align: center;">🏪 ВЫБОР СТАНЦИИ</h1>
-                
-                <div style="margin-bottom: 20px;">
-                    <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px;">📦 ЛИЧНЫЕ СТАНЦИИ</h2>
-                    <div id="personal-stations-list" style="
-                        max-height: 200px;
-                        overflow-y: auto;
-                        background: rgba(0, 30, 60, 0.5);
-                        padding: 15px;
-                        border-radius: 10px;
-                        border: 1px solid #4488ff;
-                    ">
-                        <div style="color: #888; text-align: center;">Загрузка...</div>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px;">🌍 ОБЩИЕ СТАНЦИИ</h2>
-                    <div id="shared-stations-list" style="
-                        max-height: 200px;
-                        overflow-y: auto;
-                        background: rgba(0, 30, 60, 0.5);
-                        padding: 15px;
-                        border-radius: 10px;
-                        border: 1px solid #4488ff;
-                    ">
-                        <div style="color: #888; text-align: center;">Загрузка...</div>
-                    </div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #44aaff;">
-                    <button id="close-station-select-btn" style="
-                        padding: 15px 40px;
-                        background: #666;
-                        color: white;
-                        border: none;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        font-weight: bold;
-                        font-family: 'Courier New', monospace;
-                        font-size: 16px;
-                    ">✕ ОТМЕНА</button>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(stationEl);
-
-        // Загрузка списка станций
-        setTimeout(async () => {
-            await this.loadStationLists();
-        }, 100);
-
-        // Закрытие
-        setTimeout(() => {
-            const closeBtn = document.getElementById('close-station-select-btn');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    stationEl.remove();
-                });
-            }
-        }, 0);
-
-        // Закрытие по ESC
-        const escHandler = (e: KeyboardEvent) => {
-            if (e.code === 'Escape') {
-                stationEl.remove();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
+    // Переключение панели заданий
+    private async toggleMissionPanel() {
+        await this.missionUI.toggle();
     }
 
-    // Загрузка списков станций
-    private async loadStationLists() {
-        try {
-            // Загружаем личные станции
-            const personalResponse = await fetch('/api/stations');
-            const personalStations = await personalResponse.json();
-            
-            const personalList = document.getElementById('personal-stations-list');
-            if (personalList) {
-                if (personalStations.length === 0) {
-                    personalList.innerHTML = '<div style="color: #888; text-align: center;">Нет личных станций</div>';
-                } else {
-                    personalList.innerHTML = personalStations.map((s: any) => `
-                        <div style="
-                            padding: 10px;
-                            margin: 5px 0;
-                            background: rgba(68, 136, 255, 0.3);
-                            border: 1px solid #4488ff;
-                            border-radius: 5px;
-                            cursor: pointer;
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                        " onmouseover="this.style.background='rgba(68, 136, 255, 0.5)'" onmouseout="this.style.background='rgba(68, 136, 255, 0.3)'">
-                            <span>🏪 ${s.name}</span>
-                            <button class="place-station-btn" data-name="${s.name}" style="
-                                padding: 5px 15px;
-                                background: #44aa66;
-                                color: white;
-                                border: none;
-                                border-radius: 5px;
-                                cursor: pointer;
-                                font-weight: bold;
-                            ">Установить</button>
-                        </div>
-                    `).join('');
-                    
-                    // Вешаем обработчики на кнопки
-                    document.querySelectorAll('.place-station-btn').forEach(btn => {
-                        btn.addEventListener('click', (e: any) => {
-                            const stationName = e.target.dataset.name;
-                            this.placeStationFromMenu(stationName);
-                        });
-                    });
+    // Установить имя пилота (для запросов к серверу заданий)
+    setPlayerName(name: string) {
+        this.pilotDisplayName = name;
+        this.missionUI.setPlayerName(name);
+    }
+
+    // ========================
+    // АУДИО
+    // ========================
+
+    /** Переключить звук (вкл/выкл) */
+    toggleAudio(): boolean {
+        this.audioEnabled = !this.audioEnabled;
+        if (this.audioEnabled) {
+            this.audio.init().then((ok: boolean) => {
+                if (ok) {
+                    this.audio.muted = false;
+                    this.audio.startAmbient();
+                    if (this.audioBtn) this.audioBtn.textContent = '🔊';
                 }
-            }
-            
-            // Загружаем общие станции (заглушка - пока те же личные)
-            const sharedList = document.getElementById('shared-stations-list');
-            if (sharedList) {
-                // Пока показываем те же станции как общие
-                if (personalStations.length === 0) {
-                    sharedList.innerHTML = '<div style="color: #888; text-align: center;">Нет общих станций</div>';
-                } else {
-                    sharedList.innerHTML = personalStations.map((s: any) => `
-                        <div style="
-                            padding: 10px;
-                            margin: 5px 0;
-                            background: rgba(68, 170, 255, 0.3);
-                            border: 1px solid #44aaff;
-                            border-radius: 5px;
-                            cursor: pointer;
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                        " onmouseover="this.style.background='rgba(68, 170, 255, 0.5)'" onmouseout="this.style.background='rgba(68, 170, 255, 0.3)'">
-                            <span>🌍 ${s.name} (Общая)</span>
-                            <button class="place-shared-station-btn" data-name="${s.name}" style="
-                                padding: 5px 15px;
-                                background: #44aaff;
-                                color: white;
-                                border: none;
-                                border-radius: 5px;
-                                cursor: pointer;
-                                font-weight: bold;
-                            ">Установить</button>
-                        </div>
-                    `).join('');
-                    
-                    // Вешаем обработчики на кнопки
-                    document.querySelectorAll('.place-shared-station-btn').forEach(btn => {
-                        btn.addEventListener('click', (e: any) => {
-                            const stationName = e.target.dataset.name;
-                            this.placeStationFromMenu(stationName, true);
-                        });
-                    });
-                }
-            }
-        } catch (err) {
-            console.error('Ошибка загрузки станций:', err);
-            const personalList = document.getElementById('personal-stations-list');
-            const sharedList = document.getElementById('shared-stations-list');
-            if (personalList) personalList.innerHTML = '<div style="color: #ff4444;">Ошибка загрузки</div>';
-            if (sharedList) sharedList.innerHTML = '<div style="color: #ff4444;">Ошибка загрузки</div>';
+            });
+        } else {
+            this.audio.muted = true;
+            if (this.audioBtn) this.audioBtn.textContent = '🔇';
+        }
+        return this.audioEnabled;
+    }
+
+    /** Принудительно включить/выключить */
+    setAudioEnabled(enabled: boolean) {
+        if (this.audioEnabled === enabled) return;
+        this.toggleAudio();
+    }
+
+    /** Установить ссылку на базовую станцию */
+    setBaseStation(station: BaseStation) {
+        this.baseStation = station;
+    }
+
+    /** Установить ссылку на StationManager */
+    setStationManager(manager: any) {
+        this.stationManager = manager;
+    }
+
+    /** Установить ссылку на WebSocket клиент для отправки cargo */
+    setWebSocketClient(wsClient: any) {
+        this.wsClient = wsClient;
+    }
+
+    /** Открыть/закрыть сервис станции */
+    private async toggleStationService() {
+        if (!this.baseStation) return;
+        const dist = this.shipPosition.distanceTo(this.baseStation.getStationPosition());
+        const interactionRange = this.baseStation.getOrbitRadius() * 0.3 + 50;
+        if (dist > interactionRange) {
+            console.log(`🏪 Станция далеко (${dist.toFixed(0)} ед.), подойдите ближе`);
+            return;
+        }
+        if (this.stationServiceOpen) {
+            this.stationUI.hide();
+            this.stationServiceOpen = false;
+        } else {
+            if ((this.missionUI as any).isVisible?.()) this.toggleMissionPanel();
+            this.stationUI.show(this.pilotDisplayName, 0,
+                { metal: this.cargo.metal, silicon: this.cargo.silicon, ice: this.cargo.ice, rare: this.cargo.rare, fuel: this.cargo.fuel || 0, water: this.water },
+                { shields: this.shields, radiation: this.radiation, energy: this.energy, energyCapacity: this.energyCapacity, waterCapacity: this.waterCapacity });
+            this.stationServiceOpen = true;
         }
     }
 
-    // Размещение станции из меню
+    /** Проверка близости к станции */
+    private checkStationProximity(): void {
+        if (!this.baseStation) return;
+        const dist = this.shipPosition.distanceTo(this.baseStation.getStationPosition());
+        const showRange = this.baseStation.getOrbitRadius() * 0.5 + 100;
+        this.nearStation = dist < showRange;
+    }
+
+    /** Коллизия со станцией */
+    private checkStationCollision(): boolean {
+        if (!this.baseStation) return false;
+        return this.baseStation.checkShipCollision(this.shipPosition);
+    }
+
+    /** Следование за станцией — плавное движение к точке причаливания + выравнивание скорости */
+    private followStation(dt: number): void {
+        if (!this.baseStation) return;
+
+        const stationPos = this.baseStation.getStationPosition();
+        const dockingPos = this.baseStation.getDockingPosition();
+        const stationVel = this.baseStation.getStationVelocity();
+
+        // Вектор к точке причаливания
+        const toDock = new THREE.Vector3().subVectors(dockingPos, this.shipPosition);
+        const dockDist = toDock.length();
+
+        if (dockDist > 10) {
+            // Двигаемся к точке причаливания
+            const dockSpeed = Math.min(dockDist * 0.3, this.maxSpeed * 0.5);
+            this.velocity.copy(toDock.normalize().multiplyScalar(dockSpeed));
+
+            // Поворачиваем нос корабля к точке причаливания
+            const targetDir = toDock.clone().normalize();
+            const forward = this.shipForward.clone().normalize();
+            const angle = forward.angleTo(targetDir);
+            if (angle > 0.05) {
+                const axis = new THREE.Vector3().crossVectors(forward, targetDir);
+                if (axis.length() > 0.001) {
+                    axis.normalize();
+                    const rotSpeed = Math.min(angle, 4.0 * dt);
+                    const q = new THREE.Quaternion().setFromAxisAngle(axis, rotSpeed);
+                    this.ship.quaternion.premultiply(q);
+                    this.ship.quaternion.normalize();
+                }
+            }
+        } else {
+            // Причалили — выравниваем скорость со станцией
+            this.velocity.lerp(stationVel, 0.05);
+            this.speed = this.velocity.length();
+        }
+    }
+
+    /** Инициализировать аудио при первом взаимодействии */
+    private startAmbientOnFirstInteraction() {
+        if (this.audioEnabled) return;
+        const handler = () => {
+            this.audioEnabled = true;
+            this.audio.init().then((ok: boolean) => {
+                if (ok) {
+                    this.audio.startAmbient();
+                    if (this.audioBtn) this.audioBtn.textContent = '🔊';
+                }
+            });
+            document.removeEventListener('keydown', handler);
+            document.removeEventListener('mousedown', handler);
+        };
+        document.addEventListener('keydown', handler);
+        document.addEventListener('mousedown', handler);
+    }
+
+    // Загрузка и размещение станции из меню (используется StationManager)
     private async placeStationFromMenu(stationName: string, isShared: boolean = false) {
-        console.log(`🏪 Размещение станции: ${stationName} (${isShared ? 'Общая' : 'Личная'})`);
-        
-        // Включаем режим размещения через StationManager
-        const stationManager = (this as any).stationManager;
+        const stationManager = this.stationManager;
         if (stationManager) {
             const filename = `${stationName}.blueprint.json`;
-            const success = await stationManager.enablePlacementMode(filename, (success: boolean) => {
-                if (success) {
-                    console.log(`✅ Станция "${stationName}" размещена!`);
-                } else {
-                    console.log(`❌ Размещение станции "${stationName}" отменено`);
-                }
+            await stationManager.enablePlacementMode(filename, this.pilotDisplayName, (success: boolean) => {
+                // console.log(`🏪 Размещение станции "${stationName}": ${success ? '✅' : '❌'}`);
             });
         }
     }
 
-    // Показ меню выбора корабля (заглушка)
-    private showShipSelectionMenu() {
+    // Показ меню выбора корабля
+    private async showShipSelectionMenu() {
         const shipEl = document.createElement('div');
+        shipEl.id = 'ship-selection-modal';
         shipEl.style.cssText = `
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85);
             z-index: 10002;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
         `;
 
         shipEl.innerHTML = `
             <div style="
                 background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
-                border: 3px solid #4488ff;
-                border-radius: 20px;
-                padding: 30px;
-                color: #fff;
-                font-family: 'Courier New', monospace;
-                font-size: 14px;
-                min-width: 500px;
+                border: 3px solid #4488ff; border-radius: 20px; padding: 30px;
+                color: #fff; font-family: 'Courier New', monospace; font-size: 14px;
+                min-width: 500px; max-width: 600px; max-height: 80vh; overflow-y: auto;
                 box-shadow: 0 0 50px rgba(68, 136, 255, 0.5);
             ">
                 <h1 style="color: #4488ff; font-size: 28px; margin-bottom: 20px; text-align: center;">🚀 ВЫБОР КОРАБЛЯ</h1>
-                <div style="text-align: center; color: #888; margin: 30px 0;">
-                    ⚠️ Выбор корабля в разработке<br><br>
-                    💡 Доступен только корабль "Pioneer"
-                </div>
+                <div id="ships-list" style="margin-bottom: 20px;"></div>
                 <div style="text-align: center;">
                     <button id="close-ship-select-btn" style="
-                        padding: 15px 40px;
-                        background: #666;
-                        color: white;
-                        border: none;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        font-weight: bold;
-                        font-family: 'Courier New', monospace;
-                        font-size: 16px;
+                        padding: 15px 40px; background: #666; color: white; border: none;
+                        border-radius: 10px; cursor: pointer; font-weight: bold;
+                        font-family: 'Courier New', monospace; font-size: 16px;
                     ">✕ ОТМЕНА</button>
                 </div>
             </div>
@@ -1545,22 +1595,217 @@ export class ShipController {
 
         document.body.appendChild(shipEl);
 
+        // Загружаем список кораблей
+        try {
+            const resp = await fetch('/api/ships/player', {
+                headers: { 'X-Player-Name': this.pilotDisplayName },
+            });
+            const data = await resp.json();
+            const listEl = document.getElementById('ships-list');
+            if (listEl) {
+                if (!data.ships || data.ships.length === 0) {
+                    listEl.innerHTML = '<div style="color: #888; text-align: center; margin: 30px 0;">⚠️ Нет сохранённых кораблей<br><br>💡 Создайте корабль в дизайнере</div>';
+                } else {
+                    listEl.innerHTML = data.ships.map((s: any) => `
+                        <div style="
+                            padding: 12px; margin: 8px 0;
+                            background: rgba(68, 136, 255, 0.2); border: 1px solid #4488ff;
+                            border-radius: 8px; cursor: pointer; display: flex;
+                            justify-content: space-between; align-items: center;
+                        " onmouseover="this.style.background='rgba(68, 136, 255, 0.4)'"
+                           onmouseout="this.style.background='rgba(68, 136, 255, 0.2)'">
+                            <span>🚀 ${s.name}</span>
+                            <button class="select-ship-btn" data-name="${s.name}" style="
+                                padding: 8px 20px; background: #4488ff; color: white; border: none;
+                                border-radius: 5px; cursor: pointer; font-weight: bold;
+                            ">Выбрать</button>
+                        </div>
+                    `).join('');
+
+                    document.querySelectorAll('.select-ship-btn').forEach(btn => {
+                        (btn as HTMLElement).onclick = async (e: MouseEvent) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const name = btn.getAttribute('data-name');
+                            if (name) await this.selectShip(name);
+                            shipEl.remove();
+                        };
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки кораблей:', e);
+        }
+
         setTimeout(() => {
             const closeBtn = document.getElementById('close-ship-select-btn');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    shipEl.remove();
-                });
-            }
+            if (closeBtn) closeBtn.addEventListener('click', () => shipEl.remove());
         }, 0);
+    }
 
-        const escHandler = (e: KeyboardEvent) => {
-            if (e.code === 'Escape') {
-                shipEl.remove();
-                document.removeEventListener('keydown', escHandler);
-            }
+    /** Выбрать и загрузить корабль */
+    private async selectShip(name: string) {
+        // Закрываем все открытые меню
+        const pauseMenu = document.getElementById('pause-menu');
+        if (pauseMenu) pauseMenu.remove();
+        const shipSelect = document.getElementById('ship-selection-modal');
+        if (shipSelect) shipSelect.remove();
+
+        try {
+            const resp = await fetch(`/api/ships/${name}`, {
+                headers: { 'X-Player-Name': this.pilotDisplayName },
+            });
+            if (!resp.ok) { console.error(`Корабль "${name}" не найден`); return; }
+            const blueprint = await resp.json();
+            this.applyShipBlueprint(blueprint);
+            console.log(`✅ Корабль "${name}" загружен!`);
+        } catch (e: any) {
+            console.error('Ошибка загрузки корабля:', e);
+            console.error('Ошибка загрузки корабля:', e);
+        }
+    }
+
+    /** Применить blueprint корабля */
+    private applyShipBlueprint(blueprint: any) {
+        this.ship.clear();
+        const voxelSize = 4;
+        const gridSize = blueprint.gridSize || 64;
+        const halfGrid = gridSize / 2;
+        const centerOffset = halfGrid * voxelSize;
+        for (const voxel of blueprint.voxels) {
+            const geo = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
+            const color = this.getVoxelColor(voxel.type);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.4 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(
+                voxel.x * voxelSize - centerOffset,
+                voxel.y * voxelSize - centerOffset,
+                voxel.z * voxelSize - centerOffset
+            );
+            this.ship.add(mesh);
+        }
+        // TODO: отправить другим игрокам что сменили корабль
+    }
+
+    private getVoxelColor(type: string): number {
+        const colors: Record<string, number> = {
+            hull: 0x666666, hull_reinforced: 0x888888, solar_panel: 0x2244aa,
+            battery: 0x44aa44, habitat: 0x44aaff, antenna: 0xffaa44,
+            radiator: 0xff4444, engine: 0xff6600, storage: 0xaa8844,
+            lab: 0x8844ff, docking_port: 0x00ffaa, connector: 0x555555,
         };
-        document.addEventListener('keydown', escHandler);
+        return colors[type] || 0x888888;
+    }
+
+    // Показ меню выбора станции
+    private async showStationSelectionMenu() {
+        const stationEl = document.createElement('div');
+        stationEl.id = 'station-selection-modal';
+        stationEl.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10002;
+            display: flex; justify-content: center; align-items: center;
+        `;
+
+        stationEl.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 40, 80, 0.95) 100%);
+                border: 3px solid #44aa66; border-radius: 20px; padding: 30px;
+                color: #fff; font-family: 'Courier New', monospace; font-size: 14px;
+                min-width: 500px; max-width: 600px; max-height: 80vh; overflow-y: auto;
+                box-shadow: 0 0 50px rgba(68, 170, 102, 0.5);
+            ">
+                <h1 style="color: #44aa66; font-size: 28px; margin-bottom: 20px; text-align: center;">🏪 ВЫБОР СТАНЦИИ</h1>
+                <div id="stations-list" style="margin-bottom: 20px;"></div>
+                <div style="text-align: center;">
+                    <button id="close-station-select-btn" style="
+                        padding: 15px 40px; background: #666; color: white; border: none;
+                        border-radius: 10px; cursor: pointer; font-weight: bold;
+                        font-family: 'Courier New', monospace; font-size: 16px;
+                    ">✕ ОТМЕНА</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(stationEl);
+
+        // Загружаем список станций
+        try {
+            const resp = await fetch('/api/stations/player', {
+                headers: { 'X-Player-Name': this.pilotDisplayName },
+            });
+            const data = await resp.json();
+            const listEl = document.getElementById('stations-list');
+            if (listEl) {
+                if (!data.stations || data.stations.length === 0) {
+                    listEl.innerHTML = '<div style="color: #888; text-align: center; margin: 30px 0;">⚠️ Нет сохранённых станций<br><br>💡 Создайте станцию в дизайнере</div>';
+                } else {
+                    const typeIcons: Record<string, string> = { personal: '🏠', shared: '🌍', base: '⭐' };
+                    listEl.innerHTML = data.stations.map((s: any) => `
+                        <div style="
+                            padding: 12px; margin: 8px 0;
+                            background: rgba(68, 170, 102, 0.2); border: 1px solid #44aa66;
+                            border-radius: 8px; cursor: pointer; display: flex;
+                            justify-content: space-between; align-items: center;
+                        " onmouseover="this.style.background='rgba(68, 170, 102, 0.4)'"
+                           onmouseout="this.style.background='rgba(68, 170, 102, 0.2)'">
+                            <span>${typeIcons[s.type] || '🏪'} ${s.name} <small style="color:#888;">(${s.type})</small></span>
+                            <button class="select-station-btn" data-name="${s.name}" style="
+                                padding: 8px 20px; background: #44aa66; color: white; border: none;
+                                border-radius: 5px; cursor: pointer; font-weight: bold;
+                            ">Выбрать</button>
+                        </div>
+                    `).join('');
+
+                    document.querySelectorAll('.select-station-btn').forEach(btn => {
+                        (btn as HTMLElement).onclick = async (e: MouseEvent) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const name = btn.getAttribute('data-name');
+                            if (name) await this.selectStation(name);
+                            stationEl.remove();
+                        };
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки станций:', e);
+        }
+
+        setTimeout(() => {
+            const closeBtn = document.getElementById('close-station-select-btn');
+            if (closeBtn) closeBtn.addEventListener('click', () => stationEl.remove());
+        }, 0);
+    }
+
+    /** Выбрать и разместить станцию */
+    private async selectStation(name: string) {
+        const pauseMenu = document.getElementById('pause-menu');
+        if (pauseMenu) pauseMenu.remove();
+        const stationSelect = document.getElementById('station-selection-modal');
+        if (stationSelect) stationSelect.remove();
+
+        const stationManager = this.stationManager;
+        if (!stationManager) { console.error('StationManager не найден'); return; }
+
+        const filename = `${name}.blueprint.json`;
+
+        setTimeout(async () => {
+            try {
+                if (!this.pilotDisplayName) {
+                    console.error('Имя пилота не установлено');
+                    return;
+                }
+                const success = await stationManager.enablePlacementMode(filename, this.pilotDisplayName, (ok: boolean) => {
+                    if (ok) console.log(`✅ Станция "${name}" размещена!`);
+                });
+            } catch (e: any) {
+                console.error('Ошибка размещения станции:', e);
+                console.error('Ошибка размещения станции:', e);
+            }
+        }, 100);
     }
 
     // Показ пауза меню
@@ -1601,7 +1846,7 @@ export class ShipController {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                     <div style="background: rgba(0, 50, 100, 0.5); padding: 15px; border-radius: 10px; border: 1px solid #4488ff;">
                         <h2 style="color: #44aaff; margin-bottom: 10px; font-size: 16px;">👤 ИГРОК</h2>
-                        <div>Имя: <span style="color: #fff;">Player</span></div>
+                        <div>Имя: <span style="color: #fff;">${this.pilotDisplayName}</span></div>
                         <div>Станций: <span style="color: #fff;">${stationsCount}</span></div>
                         <div>Ранг: <span style="color: #ffaa00;">Новичок</span></div>
                     </div>
@@ -1710,19 +1955,24 @@ export class ShipController {
 
     private toggleDockingComputer() {
         this.dockingComputerActive = !this.dockingComputerActive;
-        console.log(`🔗 Стыковочный компьютер: ${this.dockingComputerActive ? 'ВКЛ' : 'ВЫКЛ'}`);
+        // console.log(`🔗 Стыковочный компьютер: ${this.dockingComputerActive ? 'ВКЛ' : 'ВЫКЛ'}`);
     }
 
     private toggleAutopilot() {
         this.autopilotActive = !this.autopilotActive;
-        console.log(`🤖 Автопилот: ${this.autopilotActive ? 'ВКЛ' : 'ВЫКЛ'}`);
+        // console.log(`🤖 Автопилот: ${this.autopilotActive ? 'ВКЛ' : 'ВЫКЛ'}`);
     }
 
     private fireLaser() {
         if (this.laserCooldown) return;
+        // Проверяем энергию — лазер требует энергию
+        if (this.energy <= 0) return;
 
         this.laserActive = true;
         this.laserCooldown = true;
+
+        // Звук лазера
+        this.audio.playLaser(0.6);
 
         setTimeout(() => {
             this.laserCooldown = false;
@@ -1904,14 +2154,14 @@ export class ShipController {
     }
 
     private launchMissile() {
-        alert(`🚀 Ракета запущена: ${this.currentMissile}`);
+        // console.log(`🚀 Ракета запущена: ${this.currentMissile}`);
     }
 
     private selectMissile() {
         const missiles = ['None', 'Hammerhead', 'Firestorm', 'Tempest'];
         const idx = missiles.indexOf(this.currentMissile);
         this.currentMissile = missiles[(idx + 1) % missiles.length];
-        console.log(`🎯 Ракета: ${this.currentMissile}`);
+        // console.log(`🎯 Ракета: ${this.currentMissile}`);
         this.notifyStatusUpdate();
     }
 
@@ -1968,7 +2218,7 @@ export class ShipController {
         this.speed = 0;
         this.shields = Math.max(0, this.shields - 10);
 
-        console.log(`💥 Столкновение! Щиты: ${this.shields}%`);
+        // console.log(`💥 Столкновение! Щиты: ${this.shields}%`);
 
         if (this.shields <= 0) {
             console.log('☠️ Корабль уничтожен! Респавн...');
@@ -2038,7 +2288,7 @@ export class ShipController {
         this.throttle = 0;
         this.shields = Math.max(0, this.shields - 15);
 
-        console.log(`💥 Столкновение с астероидом! Щиты: ${this.shields}%`);
+        // console.log(`💥 Столкновение с астероидом! Щиты: ${this.shields}%`);
 
         // Корабль отскакивает
         const bounceDirection = this.shipForward.clone().negate();
@@ -2138,7 +2388,25 @@ export class ShipController {
             this.checkAsteroidCollisions();
         }
 
-        // 12. Обновление спутников (орбита вокруг корабля)
+        // 12. Проверка близости к базовой станции
+        this.checkStationProximity();
+
+        // 13. Коллизия со станцией
+        if (!this.collisionCooldown && this.checkStationCollision()) {
+            this.velocity.multiplyScalar(-0.3); // Отскок
+            this.speed *= 0.3;
+            this.shields = Math.max(0, this.shields - 5);
+            this.collisionCooldown = true;
+            setTimeout(() => { this.collisionCooldown = false; }, 500);
+            // console.log('💥 Столкновение со станцией! Щиты: ' + this.shields.toFixed(0) + '%');
+        }
+
+        // 13b. Следование за станцией
+        if (this.isFollowingStation && this.baseStation) {
+            this.followStation(deltaTime);
+        }
+
+        // 14. Обновление спутников
         this.updateSatellites(deltaTime);
 
         // 13. Обновление HUD энергии и мерцания ауры
@@ -2148,8 +2416,10 @@ export class ShipController {
         // 14. Обновление маркера выделения
         this.updateSelectionMarker();
 
-        // 15. Автонаведение на выделенный объект
-        this.handleAutoTargeting(deltaTime);
+        // 15. Автонаведение на выделенный объект (отключено при следовании за станцией)
+        if (!this.isFollowingStation) {
+            this.handleAutoTargeting(deltaTime);
+        }
 
         // 10. Принудительно копируем позицию и вращение корабля на камеру
         // Камера должна быть "тупой" - никаких lookAt, никаких up.set()
@@ -2197,7 +2467,7 @@ export class ShipController {
 
     // Столкновение со звездой (ПОЛНЫЙ КОНЕЦ ИГРЫ)
     private handleStarCollision() {
-        console.log('☀️💥 СТОЛКНОВЕНИЕ СО ЗВЕЗДОЙ! ИГРА ОКОНЧЕНА!');
+        // console.log('☀️💥 СТОЛКНОВЕНИЕ СО ЗВЕЗДОЙ! ИГРА ОКОНЧЕНА!');
         
         // Показываем статистику
         this.showGameOverStats();
@@ -2282,12 +2552,20 @@ export class ShipController {
                 font-weight: bold;
             ">🔄 Начать заново</button>
         `;
-        
+
         document.body.appendChild(mainMenuEl);
-        
-        // Обработчик кнопки
+
+        // Обработчик кнопки - респавн без перезагрузки
         document.getElementById('restart-btn')?.addEventListener('click', () => {
-            location.reload();
+            // console.log('🔄 Кнопка "Начать заново" нажата');
+            
+            // Удаляем меню
+            mainMenuEl.remove();
+            
+            // Вызываем респавн
+            this.respawn();
+            
+            // console.log('✅ Респавн выполнен');
         });
     }
 
@@ -2437,14 +2715,40 @@ export class ShipController {
         return this.shipQuaternion.clone();
     }
 
-    public setCargo(cargo: { metal: number; silicon: number; ice: number; rare: number }) {
-        this.cargo = { ...cargo };
+    public getShip(): THREE.Group {
+        return this.ship;
+    }
+
+    public setCargo(cargo: { metal: number; silicon: number; ice: number; rare: number; fuel?: number }) {
+        this.cargo = {
+            metal: cargo.metal,
+            silicon: cargo.silicon,
+            ice: cargo.ice,
+            rare: cargo.rare,
+            fuel: cargo.fuel || 0,
+        };
         this.notifyStatusUpdate();
     }
 
     public addResource(type: 'metal' | 'silicon' | 'ice' | 'rare', amount: number) {
         this.cargo[type] += amount;
         this.notifyStatusUpdate();
+    }
+
+    /** Отправить текущий cargo на сервер для синхронизации */
+    private syncCargoToServer() {
+        if (!this.wsClient || !this.pilotDisplayName) return;
+        this.wsClient.send('syncCargo', {
+            playerName: this.pilotDisplayName,
+            cargo: {
+                metal: this.cargo.metal,
+                silicon: this.cargo.silicon,
+                ice: this.cargo.ice,
+                rare: this.cargo.rare,
+                fuel: this.cargo.fuel || 0,
+                water: this.water || 0,
+            }
+        });
     }
 
     public setAsteroids(asteroids: THREE.Group[]) {

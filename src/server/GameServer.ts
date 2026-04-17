@@ -5,7 +5,11 @@ import { DatabaseManager } from './storage/DatabaseManager';
 import { LotkaVolterraGenerator } from '../world/LotkaVolterraGenerator';
 import { PlayerManager } from './utils/PlayerManager';
 import { initAdminRoutes } from './routes/admin.routes';
+import { initMissionRoutes } from './routes/mission.routes';
 import { router as authRouter } from './routes/auth.routes';
+import { StationTradeService } from './services/StationTradeService';
+import { ECONOMY } from '../shared/Economy';
+import { logBalanceLoad } from './utils/TradeLogger';
 import * as crypto from 'crypto';
 import express from 'express';
 import * as fs from 'fs';
@@ -15,6 +19,52 @@ import * as path from 'path';
 const baseDir = process.cwd();
 const publicPath = path.join(baseDir, 'public');
 const sharedStationPath = path.join(baseDir, 'stations', 'shared');
+
+/**
+ * Вычисляет минимальное расстояние астероидов от звезды
+ * Загружает blueprint станции и считает: орбита = 4*размер + 1*размер буфер
+ */
+async function computeMinAsteroidDistance(): Promise<number> {
+  const stationDir = path.join(baseDir, 'station');
+  const blueprintPath = path.join(stationDir, 'SolarWheel_Pro.blueprint.json');
+
+  if (!fs.existsSync(blueprintPath)) {
+    console.log('⚠️ Blueprint не найден, используем умолчание 2000');
+    return 2000;
+  }
+
+  try {
+    const bp = JSON.parse(fs.readFileSync(blueprintPath, 'utf-8'));
+    const voxels = bp.voxels;
+    const gridSize = bp.gridSize || 64;
+    const voxelSize = 6;
+
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+    for (const v of voxels) {
+      if (v.x < minX) minX = v.x;
+      if (v.y < minY) minY = v.y;
+      if (v.z < minZ) minZ = v.z;
+      if (v.x > maxX) maxX = v.x;
+      if (v.y > maxY) maxY = v.y;
+      if (v.z > maxZ) maxZ = v.z;
+    }
+
+    const dx = (maxX - minX + 1) * voxelSize;
+    const dy = (maxY - minY + 1) * voxelSize;
+    const dz = (maxZ - minZ + 1) * voxelSize;
+    const stationSize = Math.max(dx, dy, dz);
+    const orbitRadius = stationSize * 4;
+    const minDist = orbitRadius + stationSize;
+
+    console.log(`🛰️ Station: ${dx.toFixed(0)}x${dy.toFixed(0)}x${dz.toFixed(0)}, orbit=${orbitRadius}, minAsteroid=${minDist}`);
+    return Math.ceil(minDist);
+  } catch (e) {
+    console.error('❌ Ошибка вычисления расстояния станции:', e);
+    return 2000;
+  }
+}
 const playerBasePath = path.join(baseDir, 'players');
 const adminPath = path.join(baseDir, 'public', 'admin');
 
@@ -24,8 +74,10 @@ export class GameServer {
   private db: DatabaseManager;
   private playerManager: PlayerManager;
   private worldGenerator: LotkaVolterraGenerator;
+  private tradeService: StationTradeService;
   private currentWorld: any = null;
   private app: any;
+  private minAsteroidDist: number = 2000;
   // Маппинг clientId -> playerIndex
   private clientToPlayer: Map<string, string> = new Map();
 
@@ -33,6 +85,13 @@ export class GameServer {
     this.db = new DatabaseManager();
     this.playerManager = new PlayerManager(this.db, playerBasePath);
     this.worldGenerator = new LotkaVolterraGenerator(dbConfig);
+    this.tradeService = new StationTradeService(this.db);
+
+    // Вычисляем минимальное расстояние астероидов на основе blueprint станции
+    computeMinAsteroidDistance().then(dist => {
+      this.minAsteroidDist = dist;
+      this.worldGenerator.setMinAsteroidDist(dist);
+    });
     // Запускаем WebSocket сервер на всех интерфейсах (0.0.0.0)
     this.wss = new WebSocketServer({ port: serverConfig.port, host: '0.0.0.0' });
 
@@ -88,6 +147,59 @@ export class GameServer {
       res.json(config);
     });
 
+    // ===== Маршруты списка станций/кораблей игрока (ДО setupStationRoutes!) =====
+    // GET /api/stations/player — список станций игрока
+    this.app.get('/api/stations/player', async (req: any, res: any) => {
+      try {
+        const playerName = req.headers['x-player-name'] || req.query.playerId;
+        if (!playerName) return res.status(400).json({ error: 'Нужен playerId' });
+        const { playerIndex } = await this.playerManager.getOrCreatePlayer(playerName);
+        const playerFolder = this.playerManager.getPlayerFolder(playerIndex);
+        const stationDir = path.join(playerFolder, 'station');
+        const sharedStationPath2 = path.join(baseDir, 'stations', 'shared');
+        let stations: {name: string; type: string}[] = [];
+        // Личные станции
+        if (fs.existsSync(stationDir)) {
+          const files = fs.readdirSync(stationDir).filter(f => f.endsWith('.blueprint.json'));
+          stations.push(...files.map(f => ({ name: f.replace('.blueprint.json', ''), type: 'personal' })));
+        }
+        // Общие станции
+        if (fs.existsSync(sharedStationPath2)) {
+          const files = fs.readdirSync(sharedStationPath2).filter(f => f.endsWith('.blueprint.json'));
+          stations.push(...files.map(f => ({ name: f.replace('.blueprint.json', ''), type: 'shared' })));
+        }
+        // Базовая станция звезды
+        stations.push({ name: 'Базовая станция звезды', type: 'base' });
+        res.json({ stations });
+      } catch (e: any) {
+        console.error('❌ /api/stations/player error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // GET /api/ships/player — список кораблей игрока
+    this.app.get('/api/ships/player', async (req: any, res: any) => {
+      try {
+        const playerName = req.headers['x-player-name'] || req.query.playerId;
+        if (!playerName) return res.status(400).json({ error: 'Нужен playerId' });
+        const { playerIndex } = await this.playerManager.getOrCreatePlayer(playerName);
+        const playerFolder = this.playerManager.getPlayerFolder(playerIndex);
+        const planeDir = path.join(playerFolder, 'plane');
+        let ships: {name: string}[] = [];
+        if (fs.existsSync(planeDir)) {
+          const files = fs.readdirSync(planeDir).filter(f => f.endsWith('.blueprint.json'));
+          ships = files.map(f => ({ name: f.replace('.blueprint.json', '') }));
+        }
+        res.json({ ships });
+      } catch (e: any) {
+        console.error('❌ /api/ships/player error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // ===== Маршруты торговли на станции (регистрирует /api/stations/:name!) =====
+    this.setupStationRoutes();
+
     // GET /api/stations - список всех станций (личные + общие)
     this.app.get('/api/stations', async (req: any, res: any) => {
       try {
@@ -115,35 +227,6 @@ export class GameServer {
         });
       } catch (error: any) {
         console.error('Ошибка получения станций:', error);
-        res.status(500).json({ error: error.message });
-      }
-    });
-
-    // GET /api/stations/:name - чтение конкретной модели
-    this.app.get('/api/stations/:name', async (req: any, res: any) => {
-      try {
-        const { name } = req.params;
-        const playerName = req.query.playerName as string || 'default';
-        const { playerIndex } = await this.playerManager.getOrCreatePlayer(playerName);
-
-        // Сначала ищем в личных станциях игрока
-        const personalStation = await this.playerManager.loadPlayerStation(playerIndex, name);
-        if (personalStation) {
-          return res.json(personalStation);
-        }
-
-        // Потом в общих
-        const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.blueprint.json`;
-        const sharedFilepath = path.join(sharedStationPath, filename);
-        
-        if (fs.existsSync(sharedFilepath)) {
-          const data = fs.readFileSync(sharedFilepath, 'utf8');
-          return res.json(JSON.parse(data));
-        }
-
-        res.status(404).json({ error: 'Модель не найдена' });
-      } catch (error: any) {
-        console.error('Ошибка загрузки станции:', error);
         res.status(500).json({ error: error.message });
       }
     });
@@ -400,14 +483,51 @@ export class GameServer {
     // Админ-панель маршруты
     const jwtSecret = process.env.JWT_ACCESS_SECRET || 'default_secret_change_in_production';
     const adminRoutes = initAdminRoutes(this.db, jwtSecret);
+
+    // Логирование запросов (безопасный вариант — setImmediate)
+    const dbRef = this.db;
+    this.app.use((req: any, res: any, next: Function) => {
+      const startTime = Date.now();
+      res.on('finish', () => {
+        setImmediate(() => {
+          try {
+            const url = req.url || '';
+            if (res.statusCode < 400 && !url.startsWith('/api/admin') && !url.startsWith('/api/auth') && !url.startsWith('/api/missions')) return;
+            const ip = (req.ip || req.socket?.remoteAddress || 'unknown').toString();
+            const port = req.socket?.localPort || 0;
+            const protocol = port === 8080 ? 'ws' : 'http';
+            const ua = (req.headers['user-agent'] || '').toString().substring(0, 500);
+            dbRef.execute(
+              'INSERT INTO port_access_log (ip_address, port, protocol, path, status_code, user_agent, request_method, response_time_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              [ip, port, protocol, url.substring(0, 255), res.statusCode, ua, req.method || 'GET', Date.now() - startTime]
+            ).catch(() => {});
+          } catch (_e) { /* ignore */ }
+        });
+      });
+      next();
+    });
+
     this.app.use('/api/admin', adminRoutes);
+
+    // Маршруты заданий (требуют аутентификации пилота)
+    const missionRoutes = initMissionRoutes(this.db);
+    this.app.use('/api/missions', missionRoutes);
 
     // Маршруты авторизации (регистрация, вход, восстановление пароля)
     this.app.use('/api/auth', authRouter);
     this.db; // Сохраняем экземпляр БД для доступа из auth routes
 
+    // ===== Маршруты торговли на станции =====
+    this.setupStationRoutes();
+
     // Статические файлы админ-панели
     this.app.use('/admin', express.static(adminPath));
+
+    // Статические файлы станций (blueprint JSON)
+    const stationDir = path.join(baseDir, 'station');
+    if (fs.existsSync(stationDir)) {
+      this.app.use('/station', express.static(stationDir));
+    }
 
     // Раздача статических файлов - ПОСЛЕ API маршрутов!
     this.app.use(express.static(publicPath));
@@ -488,7 +608,7 @@ export class GameServer {
   }
 
   private async handleMessage(clientId: string, message: any) {
-    console.log(`📨 Получено сообщение от ${clientId}:`, message.type);
+    // console.log(`📨 Получено сообщение от ${clientId}:`, message.type);
     
     switch(message.type) {
       case 'getAsteroids':
@@ -506,9 +626,202 @@ export class GameServer {
       case 'playerLogin':
         await this.handlePlayerLogin(clientId, message.data);
         break;
+      case 'syncCargo':
+        await this.handleSyncCargo(clientId, message.data);
+        break;
       default:
         console.log('❌ Неизвестный тип сообщения:', message.type);
     }
+  }
+
+  // ===== Маршруты торговли на станции =====
+  private setupStationRoutes() {
+    const trade = this.tradeService;
+
+    // POST /api/station/sell — продать ресурс
+    this.app.post('/api/station/sell', async (req: any, res: any) => {
+      try {
+        const playerId = req.headers['x-player-name'] || req.body.playerId;
+        if (!playerId) return res.status(400).json({ error: 'Нужен playerId' });
+        const { resource, amount } = req.body;
+        if (!resource || !amount) return res.status(400).json({ error: 'Нужны resource и amount' });
+        const result = await trade.sellResource(playerId as string, resource, Number(amount));
+        res.json(result);
+      } catch (e: any) {
+        console.error('❌ /api/station/sell error:', e);
+        res.status(500).json({ success: false, message: `Ошибка сервера: ${e.message}` });
+      }
+    });
+
+    // POST /api/station/sync-cargo — обновить cargo на сервере (только если клиент больше сервера)
+    this.app.post('/api/station/sync-cargo', async (req: any, res: any) => {
+      try {
+        const playerId = req.headers['x-player-name'] || req.body.playerId;
+        if (!playerId) return res.status(400).json({ error: 'Нужен playerId' });
+        const { cargo } = req.body;
+        if (!cargo) return res.status(400).json({ error: 'Нужен cargo' });
+
+        // Загружаем текущий cargo из БД
+        const [rows] = await this.db.execute(
+          'SELECT cargo_json FROM players WHERE username = ? LIMIT 1',
+          [playerId]
+        ) as any;
+
+        let dbCargo = { metal: 0, silicon: 0, ice: 0, rare: 0, fuel: 0, water: 0 };
+        if (rows.length > 0 && rows[0].cargo_json) {
+          dbCargo = typeof rows[0].cargo_json === 'string' ? JSON.parse(rows[0].cargo_json) : rows[0].cargo_json;
+        }
+
+        // Обновляем ТОЛЬКО если клиент больше сервера (новые ресурсы от мининга)
+        const merged = {
+          metal: Math.max(dbCargo.metal || 0, cargo.metal || 0),
+          silicon: Math.max(dbCargo.silicon || 0, cargo.silicon || 0),
+          ice: Math.max(dbCargo.ice || 0, cargo.ice || 0),
+          rare: Math.max(dbCargo.rare || 0, cargo.rare || 0),
+          fuel: Math.max(dbCargo.fuel || 0, cargo.fuel || 0),
+          water: Math.max(dbCargo.water || 0, cargo.water || 0),
+        };
+
+        await this.db.execute(
+          'UPDATE players SET cargo_json = ? WHERE username = ?',
+          [JSON.stringify(merged), playerId]
+        );
+        res.json({ success: true, cargo: merged });
+      } catch (e: any) {
+        console.error('❌ /api/station/sync-cargo error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // GET /api/station/cargo — загрузить cargo из БД
+    this.app.get('/api/station/cargo', async (req: any, res: any) => {
+      try {
+        const playerId = req.headers['x-player-name'] || req.query.playerId;
+        if (!playerId) return res.status(400).json({ error: 'Нужен playerId' });
+        const [rows] = await this.db.execute(
+          'SELECT cargo_json FROM players WHERE username = ? LIMIT 1',
+          [playerId]
+        ) as any;
+        if (rows.length === 0 || !rows[0].cargo_json) {
+          return res.json({ cargo: { metal: 0, silicon: 0, ice: 0, rare: 0, fuel: 0, water: 0 } });
+        }
+        const cargo = typeof rows[0].cargo_json === 'string' ? JSON.parse(rows[0].cargo_json) : rows[0].cargo_json;
+        res.json({ cargo });
+      } catch (e: any) {
+        console.error('❌ /api/station/cargo error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // GET /api/stations/:name — загрузить blueprint станции
+    this.app.get('/api/stations/:name', async (req: any, res: any) => {
+      try {
+        const { name } = req.params;
+        const playerName = req.headers['x-player-name'] || req.query.playerId;
+        if (!playerName) return res.status(400).json({ error: 'Нужен playerId' });
+        const { playerIndex } = await this.playerManager.getOrCreatePlayer(playerName);
+        const playerFolder = this.playerManager.getPlayerFolder(playerIndex);
+        const stationDir = path.join(playerFolder, 'station');
+        const sharedStationPath2 = path.join(baseDir, 'stations', 'shared');
+        // Проверяем личные
+        const personalPath = path.join(stationDir, `${name}.blueprint.json`);
+        if (fs.existsSync(personalPath)) {
+          const data = JSON.parse(fs.readFileSync(personalPath, 'utf-8'));
+          return res.json({ ...data, type: 'personal' });
+        }
+        // Проверяем общие
+        const sharedPath = path.join(sharedStationPath2, `${name}.blueprint.json`);
+        if (fs.existsSync(sharedPath)) {
+          const data = JSON.parse(fs.readFileSync(sharedPath, 'utf-8'));
+          return res.json({ ...data, type: 'shared' });
+        }
+        // Базовая станция
+        if (name === 'Базовая станция звезды' || name === 'SolarWheel_Pro') {
+          const basePath = path.join(baseDir, 'station', 'SolarWheel_Pro.blueprint.json');
+          if (fs.existsSync(basePath)) {
+            const data = JSON.parse(fs.readFileSync(basePath, 'utf-8'));
+            return res.json({ ...data, type: 'base' });
+          }
+        }
+        res.status(404).json({ error: 'Станция не найдена' });
+      } catch (e: any) {
+        console.error('❌ GET /api/stations/:name error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // GET /api/ships/:name — загрузить blueprint корабля
+    this.app.get('/api/ships/:name', async (req: any, res: any) => {
+      try {
+        const { name } = req.params;
+        const playerName = req.headers['x-player-name'] || req.query.playerId;
+        if (!playerName) return res.status(400).json({ error: 'Нужен playerId' });
+        const { playerIndex } = await this.playerManager.getOrCreatePlayer(playerName);
+        const playerFolder = this.playerManager.getPlayerFolder(playerIndex);
+        const planeDir = path.join(playerFolder, 'plane');
+        const shipPath = path.join(planeDir, `${name}.blueprint.json`);
+        if (!fs.existsSync(shipPath)) return res.status(404).json({ error: 'Корабль не найден' });
+        const data = JSON.parse(fs.readFileSync(shipPath, 'utf-8'));
+        res.json(data);
+      } catch (e: any) {
+        console.error('❌ GET /api/ships/:name error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // POST /api/station/buy — купить ресурс
+    this.app.post('/api/station/buy', async (req: any, res: any) => {
+      try {
+        const playerId = req.headers['x-player-name'] || req.body.playerId;
+        if (!playerId) return res.status(400).json({ error: 'Нужен playerId' });
+        const { resource, amount, cargo } = req.body;
+        if (!resource || !amount) return res.status(400).json({ error: 'Нужны resource и amount' });
+        const result = await trade.buyResource(playerId as string, resource, Number(amount), cargo);
+        res.json(result);
+      } catch (e: any) {
+        console.error('❌ /api/station/buy error:', e);
+        res.status(500).json({ success: false, message: `Ошибка сервера: ${e.message}` });
+      }
+    });
+
+    // POST /api/station/service — получить услугу
+    this.app.post('/api/station/service', async (req: any, res: any) => {
+      try {
+        const playerId = req.headers['x-player-name'] || req.body.playerId;
+        if (!playerId) return res.status(400).json({ error: 'Нужен playerId' });
+        const { service, amount } = req.body;
+        if (!service || !amount) return res.status(400).json({ error: 'Нужны service и amount' });
+        const result = await trade.getService(playerId as string, service, Number(amount));
+        res.json(result);
+      } catch (e: any) {
+        console.error('❌ /api/station/service error:', e);
+        res.status(500).json({ success: false, message: `Ошибка сервера: ${e.message}` });
+      }
+    });
+
+    // GET /api/station/balance — баланс пилота
+    this.app.get('/api/station/balance', async (req: any, res: any) => {
+      try {
+        const playerId = req.headers['x-player-name'] || req.query.playerId;
+        if (!playerId) return res.status(400).json({ error: 'Нужен playerId или X-Player-Name' });
+        const balance = await trade.getBalance(playerId as string);
+        res.json({ balance, currency: 'Cred' });
+      } catch (e: any) {
+        console.error('❌ /api/station/balance error:', e);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // GET /api/station/pricelist — прайс-лист
+    this.app.get('/api/station/pricelist', (_req: any, res: any) => {
+      res.json({ prices: ECONOMY.prices, bulkDiscount: { threshold: ECONOMY.bulkDiscountThreshold, percent: ECONOMY.bulkDiscountPercent } });
+    });
+
+    console.log('   - GET   /api/station/balance');
+    console.log('   - POST  /api/station/sell');
+    console.log('   - POST  /api/station/buy');
+    console.log('   - POST  /api/station/service');
+    console.log('   - GET   /api/station/pricelist');
   }
 
   private async handleGetAsteroids(clientId: string, data: any) {
@@ -521,11 +834,11 @@ export class GameServer {
     }
 
     const asteroids = await this.db.getAsteroidsInRange(
-      position.x, position.y, position.z, radius
+      position.x, position.y, position.z, radius, this.minAsteroidDist
     );
 
     const asteroidsArray = asteroids as any[];
-    console.log(`☄️ Отправлено ${asteroidsArray.length} астероидов клиенту ${clientId} (радиус: ${radius})`);
+    // console.log(`☄️ Отправлено ${asteroidsArray.length} астероидов клиенту ${clientId} (радиус: ${radius}, minDist: ${this.minAsteroidDist})`);
 
     this.clients.get(clientId)?.send(JSON.stringify({
       type: 'asteroidsData',
@@ -554,7 +867,7 @@ export class GameServer {
   private async handleMineAsteroid(clientId: string, data: any) {
     const { asteroidId, laserPower } = data;
     // TODO: Реализовать добычу астероидов
-    console.log(`⛏️ Добыча астероида ${asteroidId} (мощность: ${laserPower})`);
+    // console.log(`⛏️ Добыча астероида ${asteroidId} (мощность: ${laserPower})`);
   }
 
   private async handleGetWorldInfo(clientId: string) {
@@ -580,6 +893,25 @@ export class GameServer {
 
       const resources = await this.db.getPlayerResources(playerIndex);
 
+      // Загружаем cargo_json из players (инициализируем если нет)
+      const [rows] = await this.db.execute(
+        'SELECT cargo_json FROM players WHERE username = ? LIMIT 1',
+        [playerName]
+      ) as any;
+
+      let cargo = { metal: 0, silicon: 0, ice: 0, rare: 0, fuel: 0, water: 0 };
+      if (rows.length > 0 && rows[0].cargo_json) {
+        cargo = typeof rows[0].cargo_json === 'string'
+          ? JSON.parse(rows[0].cargo_json)
+          : rows[0].cargo_json;
+      } else if (rows.length > 0) {
+        // Инициализируем пустой cargo
+        await this.db.execute(
+          'UPDATE players SET cargo_json = ? WHERE username = ?',
+          [JSON.stringify(cargo), playerName]
+        );
+      }
+
       this.clients.get(clientId)?.send(JSON.stringify({
         type: 'playerData',
         data: {
@@ -587,6 +919,7 @@ export class GameServer {
           playerIndex,
           playerName,
           resources,
+          cargo,
           isNew
         }
       }));
@@ -596,8 +929,44 @@ export class GameServer {
       console.error('Ошибка входа игрока:', error);
       this.clients.get(clientId)?.send(JSON.stringify({
         type: 'error',
-        data: { message: error.message }
+        message: 'Ошибка входа'
       }));
+    }
+  }
+
+  /** Синхронизация cargo от клиента — добавляем РАЗНИЦУ (новые ресурсы от мининга) */
+  private async handleSyncCargo(clientId: string, data: any) {
+    const { playerName, cargo } = data;
+    if (!playerName || !cargo) return;
+
+    try {
+      // Загружаем текущий cargo из БД
+      const [rows] = await this.db.execute(
+        'SELECT cargo_json FROM players WHERE username = ? LIMIT 1',
+        [playerName]
+      ) as any;
+
+      let dbCargo = { metal: 0, silicon: 0, ice: 0, rare: 0, fuel: 0, water: 0 };
+      if (rows.length > 0 && rows[0].cargo_json) {
+        dbCargo = typeof rows[0].cargo_json === 'string' ? JSON.parse(rows[0].cargo_json) : rows[0].cargo_json;
+      }
+
+      // Добавляем РАЗНИЦУ: если клиент собрал больше чем есть в БД
+      const merged = {
+        metal: dbCargo.metal + Math.max(0, (cargo.metal || 0) - dbCargo.metal),
+        silicon: dbCargo.silicon + Math.max(0, (cargo.silicon || 0) - dbCargo.silicon),
+        ice: dbCargo.ice + Math.max(0, (cargo.ice || 0) - dbCargo.ice),
+        rare: dbCargo.rare + Math.max(0, (cargo.rare || 0) - dbCargo.rare),
+        fuel: dbCargo.fuel + Math.max(0, (cargo.fuel || 0) - dbCargo.fuel),
+        water: dbCargo.water + Math.max(0, (cargo.water || 0) - dbCargo.water),
+      };
+
+      await this.db.execute(
+        'UPDATE players SET cargo_json = ? WHERE username = ?',
+        [JSON.stringify(merged), playerName]
+      );
+    } catch (e) {
+      console.error('❌ syncCargo error:', e);
     }
   }
 }

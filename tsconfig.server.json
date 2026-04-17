@@ -19,7 +19,8 @@
     "src/asteroids/**/*",
     "src/star/**/*",
     "src/types/**/*",
-    "src/world/**/*"
+    "src/world/**/*",
+    "src/shared/**/*"
   ],
   "exclude": ["node_modules", "public", "src/client", "src/ui"]
 }

@@ -1,0 +1,261 @@
+{
+  "name": "KvadratShip",
+  "version": "1.0",
+  "createdAt": "2026-04-12T11:10:58.848Z",
+  "gridSize": 64,
+  "voxelCount": 42,
+  "voxels": [
+    {
+      "x": 32,
+      "y": 32,
+      "z": 32,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 33,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 37,
+      "type": "hull_medium"
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 32,
+      "type": "hull_medium"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 33,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 32,
+      "type": "hull_medium"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 33,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 34,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 34,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 32,
+      "type": "hull_medium"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 33,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 34,
+      "type": "shield_gen"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 35,
+      "type": "shield_gen"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 36,
+      "type": "shield_gen"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 35,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 32,
+      "type": "hull_medium"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 33,
+      "type": "thruster"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 34,
+      "type": "thruster"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 35,
+      "type": "thruster"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 36,
+      "type": "thruster"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 37,
+      "type": "thruster"
+    },
+    {
+      "x": 36,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 32,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 33,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 34,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 35,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 36,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 37,
+      "type": "hull_medium"
+    },
+    {
+      "x": 37,
+      "y": 32,
+      "z": 38,
+      "type": "hull_medium"
+    }
+  ]
+}

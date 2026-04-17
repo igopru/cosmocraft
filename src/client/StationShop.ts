@@ -1,5 +1,7 @@
 // src/client/StationShop.ts
 import * as THREE from 'three';
+import { StationServiceUI } from './StationServiceUI.js';
+import type { ShipController } from './ShipController.js';
 
 export interface ShopItem {
     id: string;
@@ -54,9 +56,17 @@ export class StationShop {
     };
     
     private cart: Map<string, number> = new Map();
+    private baseStationUI: StationServiceUI;
+    private shipController: ShipController | null = null;
 
     constructor() {
+        this.baseStationUI = new StationServiceUI();
         this.setupKeyboardListener();
+    }
+
+    /** Установить ссылку на контроллер корабля */
+    setShipController(controller: ShipController) {
+        this.shipController = controller;
     }
 
     private setupKeyboardListener() {
@@ -177,9 +187,24 @@ export class StationShop {
                 
                 <div style="background: rgba(0, 50, 100, 0.5); padding: 20px; border-radius: 10px; border: 1px solid #44aaff; margin-bottom: 20px;">
                     <h2 style="color: #44aaff; margin-bottom: 15px; font-size: 18px; text-align: center;">📦 ТОРГОВЛЯ</h2>
-                    <div style="text-align: center; color: #888;">
-                        ⚠️ Торговля ресурсами в разработке<br>
-                        💡 Сдавайте редкоземельные ресурсы для производства ракет
+                    <div style="text-align: center;">
+                        <button id="open-base-station-trade" style="
+                            padding: 12px 30px;
+                            background: rgba(68, 170, 255, 0.2);
+                            border: 2px solid #44aaff;
+                            color: #44aaff;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-family: 'Courier New', monospace;
+                            font-size: 14px;
+                            font-weight: bold;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(68,170,255,0.4)'" onmouseout="this.style.background='rgba(68,170,255,0.2)'">
+                            🏪 Открыть торговлю на базовой станции
+                        </button>
+                        <div style="color: #666; font-size: 11px; margin-top: 10px;">
+                            💡 Обмен ресурсов, покупка, лечение, заправка
+                        </div>
                     </div>
                 </div>
                 
@@ -234,6 +259,14 @@ export class StationShop {
                     shopEl.remove();
                 });
             }
+
+            // Кнопка торговли на базовой станции
+            const tradeBtn = document.getElementById('open-base-station-trade');
+            if (tradeBtn) {
+                tradeBtn.addEventListener('click', () => {
+                    this.openBaseStationTrade();
+                });
+            }
         }, 0);
 
         // Закрытие по ESC
@@ -246,25 +279,19 @@ export class StationShop {
         document.addEventListener('keydown', escHandler);
     }
 
-    // Пополнение воды
+    // Пополнение воды — открываем полноценную торговлю
     private refillWater() {
-        // Вода пополняется до максимума
-        console.log('💧 Вода пополнена до максимума!');
-        alert('💧 Вода пополнена до 100%!');
+        this.openBaseStationTrade();
     }
 
-    // Зарядка энергии
+    // Зарядка энергии — открываем полноценную торговлю
     private rechargeEnergy() {
-        // Энергия пополняется до максимума
-        console.log('⚡ Энергия пополнена до максимума!');
-        alert('⚡ Энергия пополнена до 100%!');
+        this.openBaseStationTrade();
     }
 
-    // Лечение радиации
+    // Лечение радиации — открываем полноценную торговлю
     private treatRadiation() {
-        // Радиация снижается быстрее
-        console.log('🏥 Лечение радиации начато!');
-        alert('🏥 Лечение радиации начато!\nВремя лечения: 10 секунд');
+        this.openBaseStationTrade();
     }
 
     public hide() {
@@ -272,6 +299,29 @@ export class StationShop {
             this.ui.style.display = 'none';
         }
         this.isVisible = false;
+    }
+
+    /** Открыть торговлю на базовой станции */
+    private openBaseStationTrade() {
+        if (!this.shipController) return;
+        // Закрыть магазин станций
+        const shopEl = document.getElementById('station-shop-modal');
+        if (shopEl) shopEl.remove();
+
+        const cargo = (this.shipController as any).cargo;
+        const shields = (this.shipController as any).shields;
+        const radiation = (this.shipController as any).radiation;
+        const energy = (this.shipController as any).energy;
+        const water = (this.shipController as any).water;
+        // Берём имя пилота из ShipController (оно установлено при login)
+        const pilotName = (this.shipController as any).pilotDisplayName || 'Unknown';
+
+        this.baseStationUI.show(
+            pilotName,
+            0, // баланс загрузится с сервера
+            { metal: cargo?.metal || 0, silicon: cargo?.silicon || 0, ice: cargo?.ice || 0, rare: cargo?.rare || 0, fuel: cargo?.fuel || 0, water: water || 0 },
+            { shields: shields || 100, radiation: radiation || 0, energy: energy || 500, energyCapacity: 1000, waterCapacity: 100 }
+        );
     }
 
     private createUI() {
@@ -726,7 +776,7 @@ export class StationShop {
         });
 
         if (total > this.credits) {
-            alert('❌ Insufficient credits!');
+            // alert removed
             return;
         }
 

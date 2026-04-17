@@ -1,0 +1,12 @@
+{
+  "player_id": "c2cb653a-6ff7-4b9f-ae1c-8e1ff2f35578",
+  "total_xp": 825,
+  "missions_completed": 18,
+  "current_rank": {
+    "id": "rank_6",
+    "title": "Коммандер",
+    "icon": "🌟",
+    "color": "#f44336"
+  },
+  "updated_at": "2026-04-10T17:54:11.365Z"
+}
