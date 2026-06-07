@@ -385,7 +385,8 @@
             console.log('Loading game module...');
             
             // Динамический импорт
-            const module = await import('/dist/client/main.js');
+            //const module = await import('/dist/client/main.js');
+            const module = await import('/dist/client/NewMain.js');
             const CosmoCraftGame = module.CosmoCraftGame;
             
             if (!CosmoCraftGame) {

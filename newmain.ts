@@ -1,9 +1,10 @@
-// newmain.ts
+// newmain.ts — тестовый entry point
+// Компиляция: npx tsc newmain.ts --outDir public/dist --moduleResolution bundler --module ES2020 --target ES2020 --lib ES2020,DOM --skipLibCheck --allowSyntheticDefaultImports true || tsc
+// Затем в public/index.html заменить "/dist/client/main.js" на "/dist/newmain.js"
+
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { NewCentralStar } from './star/NewCentralStar';
-import { StationManager } from './station/StationManager';
-import { AsteroidField } from './asteroids/AsteroidField';
+import { NewCentralStar } from './src/star/NewCentralStar';
 
 class CosmoCraftGame {
   scene: THREE.Scene;
@@ -11,8 +12,6 @@ class CosmoCraftGame {
   renderer: THREE.WebGLRenderer;
   controls: OrbitControls;
   star: NewCentralStar;
-  stationManager: StationManager;
-  asteroidFields: AsteroidField[] = [];
   clock: THREE.Clock;
 
   constructor() {
@@ -30,15 +29,19 @@ class CosmoCraftGame {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(this.renderer.domElement);
 
+    // Освещение
+    const ambient = new THREE.AmbientLight(0x404060, 0.5);
+    this.scene.add(ambient);
+
     this.star = new NewCentralStar(8);
     this.scene.add(this.star.mesh);
     this.scene.add(this.star.light);
     this.scene.add(this.star.glowLight);
 
-    this.stationManager = new StationManager(this.scene);
-    this.createAsteroidFields();
+    console.log('Планет создано:', this.star.getPlanets().length);
+    console.log('Планеты:', this.star.getPlanets().map(p => `${p.name} r=${p.radius} orb=${p.orbitalDistance}`));
 
-    this.camera.position.set(500, 500, 1000);
+    this.camera.position.set(0, 800, 1200);
     this.controls.target.set(0, 0, 0);
 
     this.scene.fog = new THREE.FogExp2(0x000000, 0.0005);
@@ -46,30 +49,15 @@ class CosmoCraftGame {
     this.animate();
   }
 
-  private createAsteroidFields() {
-    const distances = [300, 600, 900];
-    distances.forEach(distance => {
-      const field = new AsteroidField(
-        this.scene,
-        new THREE.Vector3(distance, 0, 0),
-        200,
-        0.5
-      );
-      this.asteroidFields.push(field);
-    });
-  }
-
   private createStarfield() {
     const starsGeo = new THREE.BufferGeometry();
     const starsCount = 5000;
     const positions = new Float32Array(starsCount * 3);
-
     for (let i = 0; i < starsCount * 3; i += 3) {
       positions[i] = (Math.random() - 0.5) * 10000;
       positions[i+1] = (Math.random() - 0.5) * 10000;
       positions[i+2] = (Math.random() - 0.5) * 10000;
     }
-
     starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 });
     const stars = new THREE.Points(starsGeo, starsMat);
@@ -78,39 +66,10 @@ class CosmoCraftGame {
 
   private animate() {
     requestAnimationFrame(() => this.animate());
-
     const deltaTime = this.clock.getDelta();
     this.star.update(deltaTime);
-
-    const danger = this.star.checkDanger(this.camera.position);
-    if (danger.message) {
-      this.showWarning(danger.message);
-    }
-
-    this.asteroidFields.forEach(field => {
-      field.asteroids.forEach(asteroid => {
-        asteroid.mesh.rotation.x += 0.001;
-        asteroid.mesh.rotation.y += 0.002;
-      });
-    });
-
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
-  }
-
-  private showWarning(text: string) {
-    const warningEl = document.getElementById('warning') || document.createElement('div');
-    warningEl.id = 'warning';
-    warningEl.textContent = text;
-    warningEl.style.position = 'absolute';
-    warningEl.style.top = '10px';
-    warningEl.style.left = '50%';
-    warningEl.style.transform = 'translateX(-50%)';
-    warningEl.style.color = 'red';
-    warningEl.style.fontSize = '24px';
-    warningEl.style.fontWeight = 'bold';
-    warningEl.style.textShadow = '2px 2px 2px black';
-    document.body.appendChild(warningEl);
   }
 }
 
